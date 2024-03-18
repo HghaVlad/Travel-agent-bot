@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Integer, VARCHAR, ARRAY, TIMESTAMP, ForeignKey, Table, Column
+from sqlalchemy import create_engine, Integer, VARCHAR, ARRAY, TIMESTAMP, Date, ForeignKey, Table, Column
 from sqlalchemy.orm import declarative_base, mapped_column, relationship
 from datetime import datetime
 
@@ -13,6 +13,7 @@ association_table = Table(
     Column("user_id", ForeignKey("User.id"), primary_key=True),
     Column("journey_id", ForeignKey("Journey.id"), primary_key=True),
 )
+
 friendship = Table(
     'friendships', Base.metadata,
     Column('friend_a_id', Integer, ForeignKey('User.id'),
@@ -39,6 +40,7 @@ class User(Base):
                            primaryjoin=id == friendship.c.friend_a_id,
                            secondaryjoin=id == friendship.c.friend_b_id,)
 
+
 class Journey(Base):
     __tablename__ = "Journey"
     id = mapped_column("id", Integer, primary_key=True)
@@ -50,6 +52,18 @@ class Journey(Base):
     is_public = mapped_column("is_public", Integer, default=0)
     date_created = mapped_column("date_created", TIMESTAMP, default=datetime.now)
 
+    locations = relationship("Location", backref="Journey")
+
+
+class Location(Base):
+    __tablename__ = "Location"
+    id = mapped_column("id", Integer, primary_key=True)
+    name = mapped_column("name", VARCHAR(100))
+    start_date = mapped_column("start_date", Date)
+    end_date = mapped_column("end_date", Date)
+    user_id = mapped_column(ForeignKey("User.id"))
+    journey_id = mapped_column(ForeignKey("Journey.id"))
+
 
 class FriendRequest(Base):
     __tablename__ = "FriendRequest"
@@ -59,4 +73,4 @@ class FriendRequest(Base):
     date_created = mapped_column("date_created", TIMESTAMP, default=datetime.now)
 
 
-Base.metadata.create_all(engine)
+#Base.metadata.create_all(engine)

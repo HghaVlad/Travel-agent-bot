@@ -3,10 +3,11 @@ from aiogram.dispatcher import FSMContext
 from base_req import get_user_name, make_user
 from keyboards import reg_menu_keyboard, main_menu_keyboard, gender_keyboard, reg_end_keyboard
 from states import RegistrationState
+from filters import IsNotLink
 from bot import dp
 
 
-@dp.message_handler(commands=["start"])
+@dp.message_handler(IsNotLink(), commands=["start"])
 async def start_message(message: Message):
     user = get_user_name(message.chat.id)
     if user is None:

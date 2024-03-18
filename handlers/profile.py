@@ -1,11 +1,13 @@
 from datetime import timedelta, datetime
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.dispatcher import FSMContext
+from aiogram.utils.deep_linking import get_start_link, decode_payload
 from bot import dp, bot
-from filters import IsLogin
+from filters import IsLogin, IsFriendRequest
 from states import EditProfileState, Profile
 from base_req import get_user_data, update_user_value, delete_user, get_friends, is_friend, get_user_name, \
-    is_sent_request, new_friend_request, get_friend_request, make_friends, remove_user_from_friends
+    is_sent_request, new_friend_request, get_friend_request, make_friends, remove_user_from_friends,\
+    delete_friend_request, add_friend_with_link
 from keyboards import my_profile_keyboard, profile_edit_keyboard, cancel_keyboard, gender_edit_keyboard, \
     delete_profile_keyboard, my_friends_keyboard, main_menu_keyboard, see_friends_back, see_friends_next
 
@@ -182,9 +184,11 @@ async def profile_delete(message: Message, state: FSMContext):
 async def my_friends(message: Message):
     user_friends = get_friends(message.chat.id)
     friend_list = '\n'.join([f"{user.name} - {user.telegram_id}" for user in user_friends])
-    await message.answer("<b>Друзья\n"
+    link = await get_start_link(f"friend_request?{message.chat.id}", encode=True)
+    await message.answer("<b>Друзья:\n"
                          f"У вас</b> {len(user_friends)} <b>друзей</b>\n\n"
-                         f"{friend_list}", reply_markup=my_friends_keyboard)
+                         f"{friend_list}\n\n"
+                         f"<b>Используйте эту ссылку чтобы пользователи добавляли вас в друзья: </b><a href='{link}'>{link}</a>", reply_markup=my_friends_keyboard)
 
 
 @dp.callback_query_handler(lambda call: call.data and call.data.startswith("my_friends"))
@@ -194,6 +198,8 @@ async def my_friends_inline(call: CallbackQuery):
         await Profile.add_friend.set()
 
     elif call.data == "my_friends_deny":
+        request_id = call.data.split("?")[1]
+        delete_friend_request(int(request_id))
         await call.message.edit_text("<b>Вы отклонили заявку в друзья</b>")
     elif call.data.startswith("my_friends_new"):
         request_id = call.data.split("?")[1]
@@ -230,11 +236,11 @@ async def my_friends_inline(call: CallbackQuery):
             await see_friends(call.message)
 
 
-
 @dp.message_handler(state=Profile.add_friend)
 async def add_friend(message: Message, state: FSMContext):
     if message.text == "Отмена":
         await state.finish()
+        await message.answer("<b>Вы отменили добавление друга</b>", reply_markup=main_menu_keyboard)
         await my_friends(message)
         return
 
@@ -266,13 +272,19 @@ async def send_friend_request_notification(telegram_id, friend_id, request_id):
     deny_request = InlineKeyboardButton("Отклонить", callback_data="my_friends_deny")
     friend_request_keyboard.add(approve_request, deny_request)
 
-    await bot.send_message(friend_id, f"Пользователь {name[0]} отправил вам запрос в друзья. Хотите добавить его в друзья?", reply_markup=friend_request_keyboard)
+    await bot.send_message(friend_id, f"<b>Пользователь</b> {name[0]} <b>отправил вам запрос в друзья. Хотите добавить его в друзья?</b>", reply_markup=friend_request_keyboard)
 
 
-@dp.message_handler(state=Profile.add_friend)
+async def notify_new_friend(telegram_id, friend_telegram_id):
+    name = get_user_name(telegram_id)
+    await bot.send_message(friend_telegram_id, f"<b>Пользователь</b> {name[0]} <b>добавил вас в друзья, используя ващу персональную ссылку</b>")
+
+
+@dp.message_handler(state=Profile.remove_friend)
 async def remove_friend(message: Message, state: FSMContext):
     if message.text == "Отмена":
         await state.finish()
+        await message.answer("<b>Вы отменили удаление друга</b>", reply_markup=main_menu_keyboard)
         await my_friends(message)
         return
 
@@ -281,7 +293,7 @@ async def remove_friend(message: Message, state: FSMContext):
         if friend is None:
             await message.answer(f"<b>Пользователь с таким id не найден</b>")
         elif is_friend(message.chat.id, message.text):
-            remove_user_from_friends(message.chat.id, message.text)
+            remove_user_from_friends(str(message.chat.id), message.text)
             await message.answer("<b>Вы успешно удалили пользователя из друзей</b>", reply_markup=main_menu_keyboard)
             await state.finish()
             await my_friends(message)
@@ -309,6 +321,20 @@ async def see_friends(message: Message):
                             f"<b>Страна пользователя:</b> {user.country}\n"
                             f"<b>Город пользователя:</b> {user.city}\n"
                             f"<b>Локации пользователя:</b> {','.join(user.locations)}", reply_markup=keyboard)
+
+
+@dp.message_handler(IsLogin(), IsFriendRequest(), commands=['start'])
+async def claim_shared_journey(message: Message):
+    args = message.get_args()
+    payload = decode_payload(args)
+    if str(message.chat.id) == payload.split("?")[1]:
+        await message.answer("<b>Вы не можете добавить самого себя в друзья</b>")
+    elif add_friend_with_link(str(message.chat.id), payload.split("?")[1]):
+        await message.answer("<b>Вы успешно добавили пользователя в друзья</b>")
+        await notify_new_friend(str(message.chat.id), payload.split("?")[1])
+    else:
+        await message.answer("<b>Пользователь уже и так ваш друг</b>")
+
 
 #
 # @dp.message_handler()
