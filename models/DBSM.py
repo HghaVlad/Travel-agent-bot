@@ -47,18 +47,8 @@ class Journey(Base):
     user_id = mapped_column(ForeignKey("User.id"))
     user = relationship("User")
     travelers = relationship("User", secondary=association_table)
+    is_public = mapped_column("is_public", Integer, default=0)
     date_created = mapped_column("date_created", TIMESTAMP, default=datetime.now)
-
-
-class Friend(Base):
-    __tablename__ = "Friend"
-    id = mapped_column(Integer, primary_key=True)
-    user_id = mapped_column(Integer, ForeignKey("User.id"), nullable=False)
-    friend_id = mapped_column(Integer, ForeignKey("User.id"), nullable=False)
-    date_created = mapped_column(TIMESTAMP, default=datetime.now)
-
-    user = relationship("User", foreign_keys=[user_id])
-    friend = relationship("User", foreign_keys=[friend_id])
 
 
 class FriendRequest(Base):

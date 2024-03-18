@@ -1,13 +1,15 @@
 from datetime import timedelta, datetime
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.dispatcher import FSMContext
 from bot import dp, bot
 from filters import IsLogin
 from states import EditProfileState, Profile
 from base_req import get_user_data, update_user_value, delete_user, get_friends, is_friend, get_user_name, \
-    is_sent_request, new_friend_request, get_friend_request, make_friends
+    is_sent_request, new_friend_request, get_friend_request, make_friends, remove_user_from_friends
 from keyboards import my_profile_keyboard, profile_edit_keyboard, cancel_keyboard, gender_edit_keyboard, \
-    delete_profile_keyboard, my_friends_keyboard, main_menu_keyboard
+    delete_profile_keyboard, my_friends_keyboard, main_menu_keyboard, see_friends_back, see_friends_next
+
+user_data = {}
 
 
 @dp.message_handler(IsLogin(), lambda message: message.text == "Мой профиль")
@@ -68,7 +70,7 @@ async def my_profile_inline(call: CallbackQuery):
 @dp.message_handler(lambda message: message.text == "Отмена", state=EditProfileState)
 async def cancel_edit(message: Message, state: FSMContext):
     await state.finish()
-    await message.answer("Редактирование отменено", reply_markup=ReplyKeyboardRemove())
+    await message.answer("Редактирование отменено", reply_markup=main_menu_keyboard)
     await my_profile(message)
 
 
@@ -206,6 +208,28 @@ async def my_friends_inline(call: CallbackQuery):
             else:
                 await call.message.edit_text("<b>Пользователь не найден</b>")
 
+    elif call.data == "my_friends_delete":
+        await call.message.answer("<b>Введите Telegram ID пользователя, которого вы хотите удалить из друзей:</b>",
+                                  reply_markup=cancel_keyboard)
+        await Profile.remove_friend.set()
+
+    elif call.data == "my_friends_profiles":
+        friends = get_friends(call.message.chat.id)
+        if len(friends) == 0:
+            await call.answer("У вас нет друзей")
+        else:
+            user_data.update({call.message.chat.id: {"step": 0, "friends": tuple(friends)}})
+            await see_friends(call.message)
+    elif call.data == "my_friends_see_back":
+        if user_data[call.message.chat.id]['step'] > 0:
+            user_data[call.message.chat.id]['step'] -= 1
+            await see_friends(call.message)
+    elif call.data == "my_friends_see_next":
+        if user_data[call.message.chat.id]['step']+1 < len(user_data[call.message.chat.id]["friends"]):
+            user_data[call.message.chat.id]['step'] += 1
+            await see_friends(call.message)
+
+
 
 @dp.message_handler(state=Profile.add_friend)
 async def add_friend(message: Message, state: FSMContext):
@@ -227,7 +251,7 @@ async def add_friend(message: Message, state: FSMContext):
         else:
             request_id = new_friend_request(message.chat.id, message.text)
             await send_friend_request_notification(message.chat.id, message.text, request_id )
-            await message.answer("<b>Вы отправили заявку в друзья</b>", reply_markup=ReplyKeyboardRemove())
+            await message.answer("<b>Вы отправили заявку в друзья</b>", reply_markup=main_menu_keyboard)
             await state.finish()
             await my_friends(message)
 
@@ -245,7 +269,49 @@ async def send_friend_request_notification(telegram_id, friend_id, request_id):
     await bot.send_message(friend_id, f"Пользователь {name[0]} отправил вам запрос в друзья. Хотите добавить его в друзья?", reply_markup=friend_request_keyboard)
 
 
-@dp.message_handler()
-async def text_type(message):
-    print("here")
-    await message.answer("g")
+@dp.message_handler(state=Profile.add_friend)
+async def remove_friend(message: Message, state: FSMContext):
+    if message.text == "Отмена":
+        await state.finish()
+        await my_friends(message)
+        return
+
+    if message.text.isdigit():
+        friend = get_user_data(message.text)
+        if friend is None:
+            await message.answer(f"<b>Пользователь с таким id не найден</b>")
+        elif is_friend(message.chat.id, message.text):
+            remove_user_from_friends(message.chat.id, message.text)
+            await message.answer("<b>Вы успешно удалили пользователя из друзей</b>", reply_markup=main_menu_keyboard)
+            await state.finish()
+            await my_friends(message)
+        else:
+            await message.answer("<b>Пользователя с данным id не является вашим другом</b>")
+
+    else:
+        await message.answer("<b>Введите Telegram id в виде числа, например 3112313</b>")
+
+
+async def see_friends(message: Message):
+    data = user_data[message.chat.id]
+    user = data["friends"][data["step"]]
+    gender = "Mужчина"
+    if user.gender == "F":
+        gender = "Женщина"
+    keyboard = InlineKeyboardMarkup()
+    step_button = InlineKeyboardButton(f"{data['step']+1}/{len(data['friends'])}", callback_data="-")
+    keyboard.add(see_friends_back, step_button, see_friends_next)
+    await message.edit_text("<b>Ваш друг</b>\n\n"
+                            f"<b>Id пользователя:</b> {user.telegram_id}\n"
+                            f"<b>Имя пользователя:</b> {user.name}\n"
+                            f"<b>Пол пользователя:</b> {gender}\n"
+                            f"<b>Возраст пользователя:</b> {user.age}\n"
+                            f"<b>Страна пользователя:</b> {user.country}\n"
+                            f"<b>Город пользователя:</b> {user.city}\n"
+                            f"<b>Локации пользователя:</b> {','.join(user.locations)}", reply_markup=keyboard)
+
+#
+# @dp.message_handler()
+# async def text_type(message):
+#     print("here")
+#     await message.answer("g")

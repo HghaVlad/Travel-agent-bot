@@ -2,7 +2,7 @@ from datetime import timedelta
 from sqlalchemy import create_engine, and_, update, delete, func
 #from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import Session
-from models.DBSM import User, Friend, FriendRequest
+from models.DBSM import User, FriendRequest, Journey
 
 engine = create_engine("postgresql://postgres:postgrespw@localhost:55000/postgres")
 
@@ -88,4 +88,18 @@ def make_friends(request: FriendRequest):  # Костыль
     session.commit()
     return True
 
+
+def remove_user_from_friends(telegram_id, friend_telegram_id):
+    user_1 = session.query(User).filter(User.telegram_id == telegram_id).first()
+    user_2 = session.query(User).filter(User.telegram_id == friend_telegram_id).first()
+    user_1.friends.remove(user_2)
+    user_2.friends.remove(user_1)
+    session.commit()
+
+
+def get_user_journeys(telegram_id):
+    user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
+    journeys = session.query(Journey).filter(Journey.user_id == user.id).all()
+    friends_journes = session.query(Journey).filter(and_(Journey.user_id.in_([user.id for user in user.friends]), Journey.is_public==1))
+    return journeys, friends_journes
 

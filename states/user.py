@@ -25,3 +25,5 @@ class EditProfileState(StatesGroup):
 class Profile(StatesGroup):
     delete_profile = State()
     add_friend = State()
+    remove_friend = State()
+    see_friends = State()

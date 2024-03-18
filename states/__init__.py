@@ -1,1 +1,1 @@
-from .reg import *
+from .user import *

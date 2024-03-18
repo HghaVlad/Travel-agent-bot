@@ -31,3 +31,6 @@ add_friend = InlineKeyboardButton("Добавить друга", callback_data="
 delete_friend = InlineKeyboardButton("Удалить друга", callback_data="my_friends_delete")
 my_friends_keyboard.row(friends_profiles)
 my_friends_keyboard.add(add_friend, delete_friend)
+
+see_friends_back = InlineKeyboardButton("⬅️", callback_data="my_friends_see_back")
+see_friends_next = InlineKeyboardButton("➡️️", callback_data="my_friends_see_next")
