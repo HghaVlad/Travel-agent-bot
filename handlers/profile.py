@@ -203,7 +203,6 @@ async def my_friends_inline(call: CallbackQuery):
         await call.message.edit_text("<b>Вы отклонили заявку в друзья</b>")
     elif call.data.startswith("my_friends_new"):
         request_id = call.data.split("?")[1]
-        print(request_id)
         friend_request = get_friend_request(int(request_id))
         seven_days_ago = datetime.now() - timedelta(days=7)
         if friend_request.date_created <= seven_days_ago:

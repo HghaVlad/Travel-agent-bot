@@ -130,7 +130,6 @@ async def registration_confirm(message: Message, state: FSMContext):
         data = await state.get_data()
         telegram_id = message.chat.id
         make_user(data, telegram_id)
-        print(data)
 
         await message.answer("<b>Вы успешно зарегистрировались</b>", reply_markup=main_menu_keyboard)
     else:

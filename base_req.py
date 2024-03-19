@@ -65,7 +65,6 @@ def is_sent_request(telegram_id, friend_telegram_id):
     r = session.query(FriendRequest.id).filter(and_(FriendRequest.user_telegram_id == str(telegram_id),
                                                        FriendRequest.friend_telegram_id == str(friend_telegram_id),
                                                        FriendRequest.date_created >= seven_days_ago)).first()
-    print(r)
     return r
 
 
@@ -150,3 +149,32 @@ def add_friend_with_link(telegram_id, friend_telegram_id):
     user_2.friends.append(user_1)
     session.commit()
     return True
+
+
+def update_journey_name(journey_id, new_value):
+    journey = session.query(Journey).filter(Journey.id == journey_id).first()
+    journey.name = new_value
+    session.commit()
+
+
+def update_journey_description(journey_id, new_value):
+    journey = session.query(Journey).filter(Journey.id == journey_id).first()
+    journey.description = new_value
+    session.commit()
+
+
+def update_journey_status(journey_id, new_value):
+    journey = session.query(Journey).filter(Journey.id == journey_id).first()
+    journey.is_public = new_value
+    session.commit()
+
+
+def update_journey_locations(journey_id, locations, telegram_id):
+    user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
+    journey = session.query(Journey).filter(Journey.id == journey_id).first()
+    for location in journey.locations:
+        session.delete(location)
+    for name, date_start, date_end in locations:
+        new_location = Location(name=name, start_date=date_start, end_date=date_end, user_id=user.id, journey_id=journey.id)
+        session.add(new_location)
+    session.commit()

@@ -3,10 +3,11 @@ from aiogram.dispatcher import FSMContext
 from aiogram.utils.deep_linking import get_start_link, decode_payload
 from bot import dp
 from filters import IsLogin, IsJourneyShare
-from base_req import get_user_journeys, get_journeys_by_traveller, make_journey, claim_journey
-from states import NewJourney
+from base_req import get_user_journeys, get_journeys_by_traveller, make_journey, claim_journey, \
+    update_journey_name, update_journey_description, update_journey_status, update_journey_locations
+from states import NewJourney, EditJourney
 from keyboards import cancel_keyboard, journey_menu_keyboard, new_journey_keyboard, main_menu_keyboard, \
-    see_journey_back, see_journey_next, share_journey, edit_journey
+    see_journey_back, see_journey_next, share_journey, edit_journey, journey_edit_keyboard, journey_edit_status_keyboard
 from utils import get_date
 
 user_journey_data = {}
@@ -25,7 +26,6 @@ async def my_journeys(message: Message):
 async def journeys_callback(call: CallbackQuery):
     if call.data == "journeys_see":
         journeys = get_journeys_by_traveller(call.message.chat.id)
-        print(journeys)
         if len(journeys) == 0:
             await call.answer("У вас нет путешествий")
         else:
@@ -50,6 +50,33 @@ async def journeys_callback(call: CallbackQuery):
         await call.message.answer("<b>Поделитесь этой ссылкой с другими пользователями, чтобы они получили доступ "
                                   f"просмотру путешествия:</b>\n<a href='{link}'>{link}</a>")
 
+    elif call.data == "journey_edit":
+        await call.message.edit_text("<b>Выберите что вы хотите изменить</b>", reply_markup=journey_edit_keyboard)
+    if call.data == "journey_edit_name":
+        await call.message.delete()
+        await call.message.answer("<b>Введите новое название путешествия:</b>", reply_markup=cancel_keyboard)
+        await EditJourney.name.set()
+    elif call.data == "journey_edit_description":
+        await call.message.delete()
+        await call.message.answer("<b>Введите новое описание путешествия:</b>", reply_markup=cancel_keyboard)
+        await EditJourney.description.set()
+    elif call.data == "journey_edit_status":
+        await call.message.edit_text("<b>Выберите новый статус путешествия:</b>", reply_markup=journey_edit_status_keyboard)
+    elif call.data == "journey_edit_locations":
+        await call.message.delete()
+        await call.message.answer("<b>Сколько локаций вы хотите посетить?</b>", reply_markup=cancel_keyboard)
+        await EditJourney.location_count.set()
+    elif call.data == "journey_edit_status_public":
+        journey_id = user_journey_data[call.message.chat.id]['journeys'][user_journey_data[call.message.chat.id]['step']].id
+        update_journey_status(journey_id, 1)
+        await call.message.edit_text(f"Статус путешествия изменен")
+        await see_journey(call.message)
+    elif call.data == "journey_edit_status_private":
+        journey_id = user_journey_data[call.message.chat.id]['journeys'][user_journey_data[call.message.chat.id]['step']].id
+        update_journey_status(journey_id, 0)
+        await call.message.edit_text(f"Статус путешествия изменен")
+        await see_journey(call.message)
+
 
 async def see_journey(message: Message):
     journey = user_journey_data[message.chat.id]['journeys'][user_journey_data[message.chat.id]['step']]
@@ -69,10 +96,11 @@ async def see_journey(message: Message):
 
 
 @dp.message_handler(lambda message: message.text == "Отмена", state=NewJourney)
-async def cancel_edit(message: Message, state: FSMContext):
+async def cancel_create(message: Message, state: FSMContext):
     await state.finish()
-    await message.answer("Создание отменено", reply_markup=main_menu_keyboard)
+    await message.answer("<b>Создание отменено</b>", reply_markup=main_menu_keyboard)
     await my_journeys(message)
+
 
 @dp.message_handler(state=NewJourney.name)
 async def new_journey_name(message: Message, state: FSMContext):
@@ -104,7 +132,7 @@ async def new_journey_description(message: Message, state: FSMContext):
             await NewJourney.locations.set()
             await state.update_data(locations=[])
             await message.answer("<b>Вводите локации в том порядке, в котором вы хотите их посетить</b>\n<i>Дата окончания первой локации должна быть раньше чем дата начала второй</i>")
-            await message.answer(f"<b>Введите адрес, дату началы и дату окончания 1 локации</b>\n<i>Например, 'Москва/01.01.2023/10.01.2023</i>")
+            await message.answer(f"<b>Введите адрес, дату начала и дату окончания 1 локации</b>\n<i>Например, 'Москва/01.01.2023/10.01.2023</i>")
 
 
 @dp.message_handler(state=NewJourney.locations)
@@ -115,19 +143,28 @@ async def new_journey_location_name(message: Message, state: FSMContext):
         date2 = get_date(end_date)
         if date1 and date2:
             async with state.proxy() as data:
-                data["locations"].append([address, date1, date2])
-                print(data["location_count"])
-                if len(data["locations"]) < data['location_count']:
-                    await message.answer(
-                        f"<b>Введите адрес, дату началы и дату окончания {len(data['locations'])+1} локации</b>\n<i>Например, 'Москва/01.01.2023/10.01.2023</i>")
+                if len(data["locations"]) > 0:
+                    cond = data["locations"][-1][-1] <= date1 <= date2
                 else:
+                    cond = date1 <= date2
+                if cond:
+                    data["locations"].append([address, date1, date2])
+                    if len(data["locations"]) < data['location_count']:
+                        await message.answer(
+                            f"<b>Введите адрес, дату начала и дату окончания {len(data['locations'])+1} локации</b>\n<i>Например, 'Москва/01.01.2023/10.01.2023</i>")
+                    else:
 
-                    location_text = "\n".join([f"{data[0]} {data[1].strftime('%d.%m.%Y')}-{data[2].strftime('%d.%m.%Y')}" for data in data['locations']])
-                    await message.answer("<b>Вы хотите создать новое путешествие?</b>\n\n"
-                                         f"<b>Название:</b> {data['name']}\n"
-                                         f"<b>Описание:</b> {data['description']}\n"
-                                         f"<b>Локации:</b>\n{location_text}", reply_markup=new_journey_keyboard)
-                    await NewJourney.confirm.set()
+                        location_text = "\n".join([f"{data[0]} {data[1].strftime('%d.%m.%Y')}-{data[2].strftime('%d.%m.%Y')}" for data in data['locations']])
+                        await message.answer("<b>Вы хотите создать новое путешествие?</b>\n\n"
+                                             f"<b>Название:</b> {data['name']}\n"
+                                             f"<b>Описание:</b> {data['description']}\n"
+                                             f"<b>Локации:</b>\n{location_text}", reply_markup=new_journey_keyboard)
+                        await NewJourney.confirm.set()
+                elif date2 < date1:
+                    await message.answer("<b>Дата окончания должна быть позже даты начала</b>")
+                else:
+                    await message.answer("<b>Дата начала новой локации должна быть позже даты окончания предыдущей</b>")
+
         else:
             await message.answer("Введите дату в верном формате")
     else:
@@ -135,7 +172,7 @@ async def new_journey_location_name(message: Message, state: FSMContext):
 
 
 @dp.message_handler(state=NewJourney.confirm)
-async def new_journey_location_name(message: Message, state: FSMContext):
+async def new_journey_confirm(message: Message, state: FSMContext):
     if message.text == "Да":
         data = await state.get_data()
         make_journey(data, message.chat.id)
@@ -154,3 +191,82 @@ async def claim_shared_journey(message: Message):
         await message.answer("<b>Вы успешно добавили путешествие к себе в библиотеку</b>")
     else:
         await message.answer("<b>Путешествие уже и так есть в вашей библиотеке</b>")
+
+
+@dp.message_handler(lambda message: message.text == "Отмена", state=EditJourney)
+async def cancel_update_journey(message: Message, state: FSMContext):
+    await state.finish()
+    await message.answer("<b>Редактирование отменено</b>", reply_markup=main_menu_keyboard)
+    await my_journeys(message)
+
+
+@dp.message_handler(state=EditJourney.name)
+async def edit_journey_name(message: Message, state: FSMContext):
+    if len(message.text) > 50:
+        await message.answer("<b>Название не должно содержать больше 50 символов</b>")
+        return
+
+    journey_id = user_journey_data[message.chat.id]['journeys'][user_journey_data[message.chat.id]['step']].id
+    update_journey_name(journey_id, message.text)
+    await message.answer("<b>Название успешно изменено</b>", reply_markup=main_menu_keyboard)
+    await state.finish()
+
+
+@dp.message_handler(state=EditJourney.description)
+async def edit_journey_description(message: Message, state: FSMContext):
+    if len(message.text) > 200:
+        await message.answer("<b>Описание не должно содержать больше 200 символов</b>")
+        return
+
+    journey_id = user_journey_data[message.chat.id]['journeys'][user_journey_data[message.chat.id]['step']].id
+    update_journey_description(journey_id, message.text)
+    await message.answer("<b>Описание успешно изменено</b>", reply_markup=main_menu_keyboard)
+    await state.finish()
+
+
+@dp.message_handler(state=EditJourney.location_count)
+async def edit_journey_location_count(message: Message, state: FSMContext):
+    if message.text.isdigit():
+        location_count = int(message.text)
+        if 1 <= location_count <= 16:
+            await state.update_data(location_count=location_count, locations=[])
+            await message.answer("<b>Введите адрес, дату начала и дату окончания 1 локации</b>\n<i>Например, 'Москва/01.01.2023/10.01.2023</i>")
+            await EditJourney.locations.set()
+        else:
+            await message.answer("<b>Введите число от 1 до 16</b>")
+    else:
+        await message.answer("<b>Введите число</b>")
+
+
+@dp.message_handler(state=EditJourney.locations)
+async def edit_journey_location_name(message: Message, state: FSMContext):
+    if len(message.text.split("/")) == 3:
+        address, start_date, end_date = message.text.split("/")
+        date1 = get_date(start_date)
+        date2 = get_date(end_date)
+        if date1 and date2:
+            async with state.proxy() as data:
+                if len(data["locations"]) > 0:
+                    cond = data["locations"][-1][-1] <= date1 <= date2
+                else:
+                    cond = date1 <= date2
+                if cond:
+                    data["locations"].append([address, date1, date2])
+                    if len(data["locations"]) < data['location_count']:
+                        await message.answer(
+                            f"<b>Введите адрес, дату начала и дату окончания {len(data['locations'])+1} локации</b>\n<i>Например, 'Москва/01.01.2023/10.01.2023</i>")
+                    else:
+                        journey_id = user_journey_data[message.chat.id]['journeys'][user_journey_data[message.chat.id]['step']].id
+                        update_journey_locations(journey_id, data["locations"], message.chat.id)
+                        await message.answer("<b>Локации успешно изменены</b>", reply_markup=main_menu_keyboard)
+                        await state.finish()
+                elif date2 < date1:
+                    await message.answer("<b>Дата окончания должна быть позже даты начала</b>")
+                else:
+                    await message.answer("<b>Дата начала новой локации должна быть позже даты окончания предыдущей</b>")
+
+        else:
+            await message.answer("<b>Введите дату в верном формате</b>")
+    else:
+        await message.answer("<b>Введите локацию в верном формате</b>\n<i>Например, 'Москва/01.01.2023/10.01.2023</i>")
+

@@ -7,3 +7,10 @@ class NewJourney(StatesGroup):
     location_count = State()
     locations = State()
     confirm = State()
+
+
+class EditJourney(StatesGroup):
+    name = State()
+    description = State()
+    location_count = State()
+    locations = State()
