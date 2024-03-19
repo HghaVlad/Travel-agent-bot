@@ -2,7 +2,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 
 journey_menu_keyboard = InlineKeyboardMarkup(row_width=1)
 see_journeys = InlineKeyboardButton("Просмотр путешествий", callback_data="journeys_see")
-new_journey = InlineKeyboardButton("Создать путешествие",callback_data="journeys_new")
+new_journey = InlineKeyboardButton("Создать путешествие", callback_data="journeys_new")
 journey_menu_keyboard.add(see_journeys, new_journey)
 
 see_journey_keyboard = InlineKeyboardMarkup()
@@ -15,6 +15,11 @@ see_journey_next = InlineKeyboardButton("➡️️", callback_data="journey_see_
 
 share_journey = InlineKeyboardButton("Поделиться", callback_data="journey_share")
 edit_journey = InlineKeyboardButton("Редактировать", callback_data="journey_edit")
+address_journey = InlineKeyboardButton("Посмотреть адреса", callback_data="journey_address")
+remove_journey = InlineKeyboardButton("Удалить", callback_data="journey_delete")
+
+journey_delete_keyboard = ReplyKeyboardMarkup()
+journey_delete_keyboard.add("Да", "Нет")
 
 journey_edit_keyboard = InlineKeyboardMarkup()
 journey_edit_name = InlineKeyboardButton("Название", callback_data="journey_edit_name")

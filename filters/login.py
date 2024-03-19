@@ -6,4 +6,3 @@ class IsLogin(Filter):
     async def check(self, message) -> bool:
         user = get_user_name(message.chat.id)
         return user is not None
-

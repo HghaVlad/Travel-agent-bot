@@ -16,10 +16,8 @@ association_table = Table(
 
 friendship = Table(
     'friendships', Base.metadata,
-    Column('friend_a_id', Integer, ForeignKey('User.id'),
-                                        primary_key=True),
-    Column('friend_b_id', Integer, ForeignKey('User.id'),
-                                        primary_key=True)
+    Column('friend_a_id', Integer, ForeignKey('User.id'), primary_key=True),
+    Column('friend_b_id', Integer, ForeignKey('User.id'), primary_key=True)
 )
 
 
@@ -59,6 +57,7 @@ class Location(Base):
     __tablename__ = "Location"
     id = mapped_column("id", Integer, primary_key=True)
     name = mapped_column("name", VARCHAR(100))
+    address = mapped_column("address", VARCHAR(300))
     start_date = mapped_column("start_date", Date)
     end_date = mapped_column("end_date", Date)
     user_id = mapped_column(ForeignKey("User.id"))

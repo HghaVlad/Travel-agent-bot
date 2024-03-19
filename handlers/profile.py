@@ -16,17 +16,17 @@ user_data = {}
 
 @dp.message_handler(IsLogin(), lambda message: message.text == "Мой профиль")
 async def my_profile(message: Message):
-    user_data = get_user_data(message.chat.id)
-    gender = "Мужчина" if user_data.gender == "M" else "Женщина"
+    profile_data = get_user_data(message.chat.id)
+    gender = "Мужчина" if profile_data.gender == "M" else "Женщина"
     await message.answer("<b>Ваш профиль</b>\n\n"
-                         f"<b>Ваш id:</b> {message.chat.id}\n"
-                         f"<b>Вас зовут:</b> {user_data.name}\n"
+                         f"<b>Ваш id:</b> {profile_data.chat.id}\n"
+                         f"<b>Вас зовут:</b> {profile_data.name}\n"
                          f"<b>Ваш пол:</b> {gender}\n"
-                         f"<b>Вам</b> {user_data.age} <b>лет\n"
-                         f"Ваша страна:</b> {user_data.country}\n"
-                         f"<b>Ваш город:</b> {user_data.city}\n"
-                         f"<b>Вы хотели бы посетить</b> {','.join(user_data.locations)}\n"
-                         f"<b>Немного о вас:</b> {user_data.bio}\n", reply_markup=my_profile_keyboard)
+                         f"<b>Вам</b> {profile_data.age} <b>лет\n"
+                         f"Ваша страна:</b> {profile_data.country}\n"
+                         f"<b>Ваш город:</b> {profile_data.city}\n"
+                         f"<b>Вы хотели бы посетить</b> {','.join(profile_data.locations)}\n"
+                         f"<b>Немного о вас:</b> {profile_data.bio}\n", reply_markup=my_profile_keyboard)
 
 
 @dp.callback_query_handler(lambda call: call.data and call.data.startswith("my_profile"))
@@ -255,7 +255,7 @@ async def add_friend(message: Message, state: FSMContext):
             await message.answer(f"<b>Этот пользователь уже отправлял вам заявку в друзья</b>")
         else:
             request_id = new_friend_request(message.chat.id, message.text)
-            await send_friend_request_notification(message.chat.id, message.text, request_id )
+            await send_friend_request_notification(message.chat.id, message.text, request_id)
             await message.answer("<b>Вы отправили заявку в друзья</b>", reply_markup=main_menu_keyboard)
             await state.finish()
             await my_friends(message)
@@ -276,7 +276,7 @@ async def send_friend_request_notification(telegram_id, friend_id, request_id):
 
 async def notify_new_friend(telegram_id, friend_telegram_id):
     name = get_user_name(telegram_id)
-    await bot.send_message(friend_telegram_id, f"<b>Пользователь</b> {name[0]} <b>добавил вас в друзья, используя ващу персональную ссылку</b>")
+    await bot.send_message(friend_telegram_id, f"<b>Пользователь</b> {name[0]} <b>добавил вас в друзья, используя вашу персональную ссылку</b>")
 
 
 @dp.message_handler(state=Profile.remove_friend)
@@ -306,7 +306,7 @@ async def remove_friend(message: Message, state: FSMContext):
 async def see_friends(message: Message):
     data = user_data[message.chat.id]
     user = data["friends"][data["step"]]
-    gender = "Mужчина"
+    gender = "Мужчина"
     if user.gender == "F":
         gender = "Женщина"
     keyboard = InlineKeyboardMarkup()

@@ -15,9 +15,9 @@ class IsFriendRequest(Filter):
         payload = decode_payload(args)
         return "friend_request" in payload
 
+
 class IsNotLink(Filter):
     async def check(self, message) -> bool:
         args = message.get_args()
         payload = decode_payload(args)
         return "journey_share" not in payload and "friend_request" not in payload
-

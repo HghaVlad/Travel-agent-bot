@@ -14,3 +14,4 @@ class EditJourney(StatesGroup):
     description = State()
     location_count = State()
     locations = State()
+    delete = State()

@@ -1,7 +1,6 @@
 from datetime import timedelta
 from sqlalchemy import create_engine, and_, update, delete, func, or_, not_
-#from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session
 from models.DBSM import User, FriendRequest, Journey, Location
 
 engine = create_engine("postgresql://postgres:postgrespw@localhost:55000/postgres")
@@ -63,8 +62,8 @@ def is_friend(telegram_id, friend_telegram_id):
 def is_sent_request(telegram_id, friend_telegram_id):
     seven_days_ago = func.now() - timedelta(days=7)
     r = session.query(FriendRequest.id).filter(and_(FriendRequest.user_telegram_id == str(telegram_id),
-                                                       FriendRequest.friend_telegram_id == str(friend_telegram_id),
-                                                       FriendRequest.date_created >= seven_days_ago)).first()
+                                                    FriendRequest.friend_telegram_id == str(friend_telegram_id),
+                                                    FriendRequest.date_created >= seven_days_ago)).first()
     return r
 
 
@@ -101,14 +100,20 @@ def remove_user_from_friends(telegram_id, friend_telegram_id):
 def get_user_journeys(telegram_id):
     user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
     journeys = session.query(Journey.id).filter(Journey.user_id == user.id).all()
-    friends_journeys = session.query(Journey.id).filter(and_(Journey.user_id.in_([user.id for user in user.friends]), Journey.is_public == 1)).all()
-    travelers_journeys = session.query(Journey.id).filter(and_(Journey.travelers.any(User.id == user.id), not_(or_(Journey.user_id == user.id, and_(Journey.user_id.in_([user.id for user in user.friends]), Journey.is_public == 1))))).all()
+    friends_journeys = session.query(Journey.id).filter(
+        and_(Journey.user_id.in_([user.id for user in user.friends]), Journey.is_public == 1)).all()
+    travelers_journeys = session.query(Journey.id).filter(and_(Journey.travelers.any(User.id == user.id), not_(
+        or_(Journey.user_id == user.id,
+            and_(Journey.user_id.in_([user.id for user in user.friends]), Journey.is_public == 1))))).all()
     return journeys, friends_journeys, travelers_journeys
 
 
 def get_journeys_by_traveller(telegram_id):
     user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
-    journeys = session.query(Journey).filter(or_(Journey.user_id == user.id, and_(Journey.user_id.in_([user.id for user in user.friends]), Journey.is_public == 1), Journey.travelers.any(User.id == user.id))).all()
+    journeys = session.query(Journey).filter(or_(Journey.user_id == user.id,
+                                                 and_(Journey.user_id.in_([user.id for user in user.friends]),
+                                                      Journey.is_public == 1),
+                                                 Journey.travelers.any(User.id == user.id))).all()
     return journeys
 
 
@@ -117,8 +122,9 @@ def make_journey(data, telegram_id):
     new_journey = Journey(name=data['name'], description=data['description'], user=user)
     session.add(new_journey)
     session.commit()
-    for name, date_start, date_end in data['locations']:
-        new_location = Location(name=name, start_date=date_start, end_date=date_end, user_id=user.id, journey_id=new_journey.id)
+    for name, date_start, date_end, address in data['locations']:
+        new_location = Location(name=name, address=address, start_date=date_start, end_date=date_end, user_id=user.id,
+                                journey_id=new_journey.id)
         session.add(new_location)
     new_journey.travelers.append(user)
     session.commit()
@@ -174,7 +180,17 @@ def update_journey_locations(journey_id, locations, telegram_id):
     journey = session.query(Journey).filter(Journey.id == journey_id).first()
     for location in journey.locations:
         session.delete(location)
-    for name, date_start, date_end in locations:
-        new_location = Location(name=name, start_date=date_start, end_date=date_end, user_id=user.id, journey_id=journey.id)
+    for name, date_start, date_end, address in locations:
+        new_location = Location(name=name, address=address, start_date=date_start, end_date=date_end, user_id=user.id,
+                                journey_id=journey.id)
         session.add(new_location)
+    session.commit()
+
+
+def delete_journey(journey):
+    for location in journey.locations:
+        session.delete(location)
+    session.commit()
+    journey.travelers.clear()
+    session.delete(journey)
     session.commit()
