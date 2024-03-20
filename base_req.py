@@ -1,7 +1,7 @@
 from datetime import timedelta
 from sqlalchemy import create_engine, and_, update, delete, func, or_, not_
 from sqlalchemy.orm import Session
-from models.DBSM import User, FriendRequest, Journey, Location
+from models.DBSM import User, FriendRequest, Journey, Location, Note
 
 engine = create_engine("postgresql://postgres:postgrespw@localhost:55000/postgres")
 
@@ -193,4 +193,23 @@ def delete_journey(journey):
     session.commit()
     journey.travelers.clear()
     session.delete(journey)
+    session.commit()
+
+
+def get_notes(journey_id, telegram_id):
+    user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
+    notes = session.query(Note).filter(and_(Note.journey_id == journey_id, or_(Note.is_public == 1, Note.user_id == user.id))).all()
+    return notes
+
+
+def create_note(journey_id, telegram_id, note_text, note_photo, note_file):
+    user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
+    newnote = Note(journey_id=journey_id, user_id=user.id, text=note_text, photo_file_id=note_photo, document_file_id=note_file)
+    session.add(newnote)
+    session.commit()
+
+
+def change_note_public(note_id, status):
+    note = session.query(Note).filter(Note.id == note_id).first()
+    note.is_public = status
     session.commit()

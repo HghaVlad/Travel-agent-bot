@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Integer, VARCHAR, ARRAY, TIMESTAMP, Date, ForeignKey, Table, Column
+from sqlalchemy import create_engine, Integer, VARCHAR, ARRAY, TIMESTAMP, Date, ForeignKey, Table, Column, Text
 from sqlalchemy.orm import declarative_base, mapped_column, relationship
 from datetime import datetime
 
@@ -20,6 +20,11 @@ friendship = Table(
     Column('friend_b_id', Integer, ForeignKey('User.id'), primary_key=True)
 )
 
+journey_notes = Table(
+    'journey_notes', Base.metadata,
+    Column('note_id', Integer, ForeignKey('Note.id'), primary_key=True),
+    Column('journey_id', Integer, ForeignKey('Journey.id'), primary_key=True)
+)
 
 class User(Base):
     __tablename__ = "User"
@@ -72,4 +77,17 @@ class FriendRequest(Base):
     date_created = mapped_column("date_created", TIMESTAMP, default=datetime.now)
 
 
-#Base.metadata.create_all(engine)
+class Note(Base):
+    __tablename__ = "Note"
+    id = mapped_column(Integer, primary_key=True)
+    journey_id = mapped_column(ForeignKey("Journey.id"))
+    journey = relationship("Journey")
+    user_id = mapped_column(ForeignKey("User.id"))
+    user = relationship("User")
+    is_public = mapped_column("is_public", Integer, default=0)
+    text = mapped_column("text", Text, nullable=True)
+    photo_file_id = mapped_column("photo_file_id", Text, nullable=True)
+    document_file_id = mapped_column("document_file_id", Text, nullable=True)
+
+
+# Base.metadata.create_all(engine)

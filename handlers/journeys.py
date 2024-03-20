@@ -1,14 +1,16 @@
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 from aiogram.dispatcher import FSMContext
 from aiogram.utils.deep_linking import get_start_link, decode_payload
-from bot import dp
+from bot import dp, bot
 from filters import IsLogin, IsJourneyShare
 from base_req import get_user_journeys, get_journeys_by_traveller, make_journey, claim_journey, \
-    update_journey_name, update_journey_description, update_journey_status, update_journey_locations, delete_journey
-from states import NewJourney, EditJourney
-from keyboards import cancel_keyboard, journey_menu_keyboard, new_journey_keyboard, main_menu_keyboard, \
+    update_journey_name, update_journey_description, update_journey_status, update_journey_locations, delete_journey, \
+    get_notes, create_note, change_note_public
+from states import NewJourney, EditJourney, CreateNote
+from keyboards import cancel_keyboard, journey_menu_keyboard, confirm_keyboard, main_menu_keyboard, \
     see_journey_back, see_journey_next, share_journey, edit_journey, journey_edit_keyboard, journey_edit_status_keyboard,\
-    address_journey, remove_journey, journey_delete_keyboard
+    address_journey, remove_journey, journey_delete_keyboard, notes_back, notes_next, notes_public, notes_private, \
+    notes_delete, notes_journey, notes_journey_create, notes_type_keyboard, notes_back_to_journey
 from utils import get_date
 from api.openstreetmap import get_address
 
@@ -88,6 +90,51 @@ async def journeys_callback(call: CallbackQuery):
         await call.message.edit_text(f"Статус путешествия изменен")
         await see_journey(call.message)
 
+    elif call.data == 'journey_notes':
+        journey_id = user_journey_data[call.message.chat.id]['journeys'][user_journey_data[call.message.chat.id]['step']].id
+        notes = get_notes(journey_id, call.message.chat.id)
+        if len(notes) == 0:
+            await call.answer("У вас еще нет заметок")
+        else:
+            user_journey_data[call.message.chat.id]["notes"] = notes
+            user_journey_data[call.message.chat.id]["notes_step"] = 0
+            await see_note(call.message)
+    elif call.data == "journey_notes_back":
+        if user_journey_data[call.message.chat.id]['notes_step'] > 0:
+            user_journey_data[call.message.chat.id]['notes_step'] -= 1
+            await see_note(call.message)
+    elif call.data == "journey_notes_next":
+        if user_journey_data[call.message.chat.id]['notes_step']+1 < len(user_journey_data[call.message.chat.id]["notes"]):
+            user_journey_data[call.message.chat.id]['notes_step'] += 1
+            await see_note(call.message)
+
+    elif call.data == "journey_notes_crate":
+        await call.message.edit_text("<b>Какой тип заметки вы хотите создать?</b>", reply_markup=notes_type_keyboard)
+    elif call.data == "journey_notes_createText":
+        await call.message.delete()
+        await CreateNote.text.set()
+        await call.message.answer("<b>Отправьте текст заметки</b>", reply_markup=cancel_keyboard)
+    elif call.data == "journey_notes_createPhoto":
+        await call.message.delete()
+        await CreateNote.photo.set()
+        await call.message.answer("<b>Отправьте фотографии</b>", reply_markup=cancel_keyboard)
+    elif call.data == "journey_notes_createFile":
+        await call.message.delete()
+        await CreateNote.file.set()
+        await call.message.answer("<b>Отправьте файл</b>", reply_markup=cancel_keyboard)
+
+    elif call.data == "journey_notest_back_to_journey":
+        await call.message.delete()
+        await see_journey(call.message)
+    elif call.data == "journey_notes_public":
+        note_id = user_journey_data[call.message.chat.id]["notes"][user_journey_data[call.message.chat.id]["notes_step"]].id
+        change_note_public(note_id, 1)
+        await see_note(call.message)
+    elif call.data == "journey_notes_private":
+        note_id = user_journey_data[call.message.chat.id]["notes"][user_journey_data[call.message.chat.id]["notes_step"]].id
+        change_note_public(note_id, 0)
+        await see_note(call.message)
+
 
 async def see_journey(message: Message):
     journey = user_journey_data[message.chat.id]['journeys'][user_journey_data[message.chat.id]['step']]
@@ -98,13 +145,23 @@ async def see_journey(message: Message):
     keyboard.add(see_journey_back, step_button, see_journey_next)
     if journey.user.telegram_id == str(message.chat.id):
         keyboard.add(edit_journey, share_journey, remove_journey)
-    keyboard.add(address_journey)
-    await message.edit_text("<b>Ваши путешествия</b>\n\n"
-                            f"<b>Название:</b> {journey.name}\n"
-                            f"<b>Описание:</b> {journey.description}\n"
-                            f"<b>Автор:</b> {journey.user.name}\n"
-                            f"<b>Статус:</b> {'Доступен друзьям' if journey.is_public else 'Приватный'}\n"
-                            f"<b>Локации:</b>\n{location_text}", reply_markup=keyboard)
+    keyboard.add(address_journey, notes_journey, notes_journey_create)
+    try:
+        await message.edit_text("<b>Ваши путешествия</b>\n\n"
+                                f"<b>Id путешествия:</b> {journey.id}\n"
+                                f"<b>Название:</b> {journey.name}\n"
+                                f"<b>Описание:</b> {journey.description}\n"
+                                f"<b>Автор:</b> {journey.user.name}\n"
+                                f"<b>Статус:</b> {'Доступен друзьям' if journey.is_public else 'Приватный'}\n"
+                                f"<b>Локации:</b>\n{location_text}", reply_markup=keyboard)
+    except:
+        await message.answer("<b>Ваши путешествия</b>\n\n"
+                                f"<b>Id путешествия:</b> {journey.id}\n"
+                                f"<b>Название:</b> {journey.name}\n"
+                                f"<b>Описание:</b> {journey.description}\n"
+                                f"<b>Автор:</b> {journey.user.name}\n"
+                                f"<b>Статус:</b> {'Доступен друзьям' if journey.is_public else 'Приватный'}\n"
+                                f"<b>Локации:</b>\n{location_text}", reply_markup=keyboard)
 
 
 @dp.message_handler(lambda message: message.text == "Отмена", state=NewJourney)
@@ -173,7 +230,7 @@ async def new_journey_location_name(message: Message, state: FSMContext):
                             await message.answer("<b>Вы хотите создать новое путешествие?</b>\n\n"
                                                  f"<b>Название:</b> {data['name']}\n"
                                                  f"<b>Описание:</b> {data['description']}\n"
-                                                 f"<b>Локации:</b>\n{location_text}", reply_markup=new_journey_keyboard)
+                                                 f"<b>Локации:</b>\n{location_text}", reply_markup=confirm_keyboard)
                             await NewJourney.confirm.set()
                     elif date2 < date1:
                         await message.answer("<b>Дата окончания должна быть позже даты начала</b>")
@@ -304,4 +361,71 @@ async def edit_journey_delete(message: Message, state: FSMContext):
     else:
         await message.answer("<b>Вы отменили удаление путешествия</b>", reply_markup=main_menu_keyboard)
 
+    await state.finish()
+
+
+async def see_note(message: Message):
+    note = user_journey_data[message.chat.id]["notes"][user_journey_data[message.chat.id]["notes_step"]]
+    keyboard = InlineKeyboardMarkup()
+    button = InlineKeyboardButton(
+        f"{user_journey_data[message.chat.id]['notes_step'] + 1}/{len(user_journey_data[message.chat.id]['notes'])}",
+        callback_data="-")
+    keyboard.add(notes_back, button, notes_next)
+    if note.user.telegram_id == str(message.chat.id) and note.is_public == 1:
+        keyboard.add(notes_private, notes_delete)
+    elif note.user.telegram_id == str(message.chat.id):
+        keyboard.add(notes_public, notes_delete)
+    keyboard.add(notes_back_to_journey)
+    await message.delete()
+    if note.text:
+        await bot.send_message(message.chat.id, note.text, reply_markup=keyboard)
+    elif note.photo_file_id:
+        await bot.send_photo(message.chat.id, note.photo_file_id, reply_markup=keyboard)
+    else:
+        await bot.send_document(message.chat.id, note.document_file_id, reply_markup=keyboard)
+
+
+@dp.message_handler(state=CreateNote.text)
+async def create_note_text(message: Message, state: FSMContext):
+    note_text = message.text
+    if len(note_text) > 4000:
+        await message.answer("<b>Заметка слишком большая. Размер не должен превышать 4000 символов.")
+    else:
+        await message.answer(f"<b>Вы хотите создать заметку со следующим текстом?</b>\n\n<i>{note_text}</i>", reply_markup=confirm_keyboard)
+        await state.update_data(text=note_text)
+        await CreateNote.confirm.set()
+
+
+@dp.message_handler(state=CreateNote.photo, content_types=["photo"])
+async def create_note_photo(message: Message, state: FSMContext):
+    photo = message.photo
+    if photo:
+        photo_id = photo[-1].file_id
+        await bot.send_photo(message.chat.id, photo=photo_id, caption="<b>Вы хотите создать заметку со следующим изображением?</b>", reply_markup=confirm_keyboard)
+        await state.update_data(photo=photo_id)
+        await CreateNote.confirm.set()
+
+
+@dp.message_handler(state=CreateNote.file, content_types=["document"])
+async def create_note_file(message: Message, state: FSMContext):
+    file = message.document
+    if file:
+        await bot.send_document(message.chat.id, document=file.file_id, caption="<b>Вы хотите создать заметку со следующим файлом?</b>", reply_markup=confirm_keyboard)
+        await state.update_data(file=file.file_id)
+        await CreateNote.confirm.set()
+    else:
+        await message.answer("<b>Документ не распознан</b>")
+
+
+@dp.message_handler(state=CreateNote.confirm)
+async def confirm_note_text(message: Message, state: FSMContext):
+    if message.text == "Да":
+        data = await state.get_data()
+        journey_id = user_journey_data[message.chat.id]['journeys'][user_journey_data[message.chat.id]['step']].id
+        create_note(journey_id, message.chat.id, data.get("text"), data.get("photo"), data.get("file"))
+        await message.answer("<b>Вы успешно создали заметку</b>", reply_markup=main_menu_keyboard)
+        await state.finish()
+        return
+
+    await message.answer("<b>Вы отменили создание заметки</b>", reply_markup=main_menu_keyboard)
     await state.finish()

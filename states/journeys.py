@@ -15,3 +15,10 @@ class EditJourney(StatesGroup):
     location_count = State()
     locations = State()
     delete = State()
+
+
+class CreateNote(StatesGroup):
+    text = State()
+    photo = State()
+    file = State()
+    confirm = State()

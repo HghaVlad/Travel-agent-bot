@@ -19,7 +19,7 @@ async def my_profile(message: Message):
     profile_data = get_user_data(message.chat.id)
     gender = "Мужчина" if profile_data.gender == "M" else "Женщина"
     await message.answer("<b>Ваш профиль</b>\n\n"
-                         f"<b>Ваш id:</b> {profile_data.chat.id}\n"
+                         f"<b>Ваш id:</b> {message.chat.id}\n"
                          f"<b>Вас зовут:</b> {profile_data.name}\n"
                          f"<b>Ваш пол:</b> {gender}\n"
                          f"<b>Вам</b> {profile_data.age} <b>лет\n"
