@@ -122,9 +122,9 @@ def make_journey(data, telegram_id):
     new_journey = Journey(name=data['name'], description=data['description'], user=user)
     session.add(new_journey)
     session.commit()
-    for name, date_start, date_end, address in data['locations']:
+    for name, date_start, date_end, address, lon, lat in data['locations']:
         new_location = Location(name=name, address=address, start_date=date_start, end_date=date_end, user_id=user.id,
-                                journey_id=new_journey.id)
+                                journey_id=new_journey.id, lon=float(lon), lat=float(lat))
         session.add(new_location)
     new_journey.travelers.append(user)
     session.commit()
@@ -180,9 +180,9 @@ def update_journey_locations(journey_id, locations, telegram_id):
     journey = session.query(Journey).filter(Journey.id == journey_id).first()
     for location in journey.locations:
         session.delete(location)
-    for name, date_start, date_end, address in locations:
+    for name, date_start, date_end, address, lon, lat in locations:
         new_location = Location(name=name, address=address, start_date=date_start, end_date=date_end, user_id=user.id,
-                                journey_id=journey.id)
+                                journey_id=journey.id, lon=float(lon), lat=float(lat))
         session.add(new_location)
     session.commit()
 
@@ -213,3 +213,9 @@ def change_note_public(note_id, status):
     note = session.query(Note).filter(Note.id == note_id).first()
     note.is_public = status
     session.commit()
+
+
+def get_location(location_id):
+    location = session.query(Location).filter(Location.id == location_id).first()
+    return location
+

@@ -16,6 +16,8 @@ see_journey_next = InlineKeyboardButton("➡️️", callback_data="journey_see_
 share_journey = InlineKeyboardButton("Поделиться", callback_data="journey_share")
 edit_journey = InlineKeyboardButton("Редактировать", callback_data="journey_edit")
 address_journey = InlineKeyboardButton("Посмотреть адреса", callback_data="journey_address")
+distance_journey = InlineKeyboardButton("Посмотреть расстояния", callback_data="journey_distance")
+route_journey = InlineKeyboardButton("Построить маршрут", callback_data="journey_make_route")
 remove_journey = InlineKeyboardButton("Удалить", callback_data="journey_delete")
 notes_journey = InlineKeyboardButton("Заметки", callback_data="journey_notes")
 notes_journey_create = InlineKeyboardButton("Создать заметку", callback_data="journey_notes_crate")
@@ -49,3 +51,18 @@ notes_type_text = InlineKeyboardButton("Текст", callback_data="journey_note
 notes_type_photo = InlineKeyboardButton("Фото", callback_data="journey_notes_createPhoto")
 notes_type_file = InlineKeyboardButton("Файл", callback_data="journey_notes_createFile")
 notes_type_keyboard.add(notes_type_text, notes_type_photo, notes_type_file)
+
+journey_comeback_keyboard = InlineKeyboardMarkup()
+journey_comeback_button = InlineKeyboardButton("Вернуться к путешествию", callback_data="journeys_comeback")
+journey_comeback_keyboard.add(journey_comeback_button)
+
+journey_route_keyboard = InlineKeyboardMarkup(row_width=1)
+journey_route_car = InlineKeyboardButton("Машина", callback_data="journey_make_route_car")
+journey_route_feet = InlineKeyboardButton("Пешком", callback_data="journey_make_route_feet")
+journey_route_cycling = InlineKeyboardButton("Велосипед", callback_data="journey_make_route_cycling")
+journey_route_keyboard.add(journey_route_car, journey_route_feet, journey_route_cycling, journey_comeback_button)
+
+journey_route_change_zoom = InlineKeyboardMarkup(row_width=2)
+journey_route_zoom_lower = InlineKeyboardButton("Уменьшить масштаб", callback_data="journey_route_zoom_lower")
+journey_route_zoom_higher = InlineKeyboardButton("Увеличить масштаб", callback_data="journey_route_zoom_higher")
+journey_route_change_zoom.add(journey_route_zoom_lower, journey_route_zoom_higher, journey_comeback_button)

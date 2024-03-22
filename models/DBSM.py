@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Integer, VARCHAR, ARRAY, TIMESTAMP, Date, ForeignKey, Table, Column, Text
+from sqlalchemy import create_engine, Integer, VARCHAR, ARRAY, TIMESTAMP, Date, ForeignKey, Table, Column, Text, DECIMAL
 from sqlalchemy.orm import declarative_base, mapped_column, relationship
 from datetime import datetime
 
@@ -67,6 +67,8 @@ class Location(Base):
     end_date = mapped_column("end_date", Date)
     user_id = mapped_column(ForeignKey("User.id"))
     journey_id = mapped_column(ForeignKey("Journey.id"))
+    lon = mapped_column("lon", DECIMAL)
+    lat = mapped_column("lat", DECIMAL)
 
 
 class FriendRequest(Base):
@@ -90,4 +92,4 @@ class Note(Base):
     document_file_id = mapped_column("document_file_id", Text, nullable=True)
 
 
-# Base.metadata.create_all(engine)
+Base.metadata.create_all(engine)
