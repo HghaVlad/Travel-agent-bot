@@ -92,4 +92,14 @@ class Note(Base):
     document_file_id = mapped_column("document_file_id", Text, nullable=True)
 
 
-Base.metadata.create_all(engine)
+class Task(Base):
+    __tablename__ = "Task"
+    id = mapped_column(Integer, primary_key=True)
+    journey_id = mapped_column(ForeignKey("Journey.id"))
+    journey = relationship("Journey")
+    user_id = mapped_column(ForeignKey("User.id"))
+    user = relationship("User")
+    name = mapped_column("name", Text)
+    is_completed = mapped_column("is_completed", Integer, default=0)
+
+#Base.metadata.create_all(engine)

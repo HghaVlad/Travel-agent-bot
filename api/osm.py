@@ -1,10 +1,9 @@
 import json
 import requests
 import folium
-import redis
+from . import redis_client
 
 OPENROUTESERVICE_API_KEY = "5b3ce3597851110001cf62485c20de94b36640b9b26b675b08d16203"
-redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
 
 def get_address(query: str):

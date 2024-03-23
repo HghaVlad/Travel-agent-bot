@@ -13,10 +13,16 @@ confirm_keyboard.add("Да", "Нет")
 see_journey_back = InlineKeyboardButton("⬅️", callback_data="journey_see_back")
 see_journey_next = InlineKeyboardButton("➡️️", callback_data="journey_see_next")
 
+journey_comeback_keyboard = InlineKeyboardMarkup()
+journey_comeback_button = InlineKeyboardButton("Вернуться к путешествию", callback_data="journeys_comeback")
+journey_comeback_keyboard.add(journey_comeback_button)
+
 share_journey = InlineKeyboardButton("Поделиться", callback_data="journey_share")
 edit_journey = InlineKeyboardButton("Редактировать", callback_data="journey_edit")
-address_journey = InlineKeyboardButton("Посмотреть адреса", callback_data="journey_address")
+address_journey = InlineKeyboardButton("Адреса", callback_data="journey_address")
 route_journey = InlineKeyboardButton("Построить маршрут", callback_data="journey_make_route")
+weather_journey = InlineKeyboardButton("Погода", callback_data="journey_weather")
+tasks_journey = InlineKeyboardButton("Цели", callback_data="journey_tasks")
 remove_journey = InlineKeyboardButton("Удалить", callback_data="journey_delete")
 notes_journey = InlineKeyboardButton("Заметки", callback_data="journey_notes")
 notes_journey_create = InlineKeyboardButton("Создать заметку", callback_data="journey_notes_crate")
@@ -31,6 +37,7 @@ journey_edit_status = InlineKeyboardButton("Статус", callback_data="journe
 journey_edit_locations = InlineKeyboardButton("Локации", callback_data="journey_edit_locations")
 journey_edit_keyboard.row(journey_edit_name, journey_edit_description)
 journey_edit_keyboard.row(journey_edit_status, journey_edit_locations)
+journey_edit_keyboard.add(journey_comeback_button)
 
 journey_edit_status_keyboard = InlineKeyboardMarkup(row_width=2)
 edit_status_public = InlineKeyboardButton("Доступен друзьям", callback_data="journey_edit_status_public")
@@ -49,11 +56,9 @@ notes_type_keyboard = InlineKeyboardMarkup()
 notes_type_text = InlineKeyboardButton("Текст", callback_data="journey_notes_createText")
 notes_type_photo = InlineKeyboardButton("Фото", callback_data="journey_notes_createPhoto")
 notes_type_file = InlineKeyboardButton("Файл", callback_data="journey_notes_createFile")
-notes_type_keyboard.add(notes_type_text, notes_type_photo, notes_type_file)
+notes_type_keyboard.add(notes_type_text, notes_type_photo, notes_type_file, journey_comeback_button)
 
-journey_comeback_keyboard = InlineKeyboardMarkup()
-journey_comeback_button = InlineKeyboardButton("Вернуться к путешествию", callback_data="journeys_comeback")
-journey_comeback_keyboard.add(journey_comeback_button)
+
 
 journey_route_keyboard = InlineKeyboardMarkup(row_width=1)
 journey_route_car = InlineKeyboardButton("Машина", callback_data="journey_make_route_car")
@@ -68,3 +73,14 @@ journey_route_change_zoom.add(journey_route_zoom_lower, journey_route_zoom_highe
 
 journey_route_my_location = ReplyKeyboardMarkup()
 journey_route_my_location.add(KeyboardButton("Отправить местолположение", request_location=True))
+journey_route_my_location.add("Отмена")
+
+journey_weather_back = InlineKeyboardButton("⬅️", callback_data="journey_weather_back")
+journey_weather_next = InlineKeyboardButton("➡️️", callback_data="journey_weather_next")
+
+journey_task_keyboard = InlineKeyboardMarkup()
+journey_tasks_delete = InlineKeyboardButton('Удалить цель', callback_data="journey_tasks_delete")
+journey_tasks_add = InlineKeyboardButton("Добавить цель", callback_data="journey_tasks_add")
+journey_task_keyboard.row(InlineKeyboardButton("Мои цели", callback_data="journey_tasks_my"))
+journey_task_keyboard.row(journey_tasks_add, journey_tasks_delete)
+journey_task_keyboard.row(journey_comeback_button)

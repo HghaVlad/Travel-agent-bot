@@ -23,5 +23,9 @@ class CreateNote(StatesGroup):
     file = State()
     confirm = State()
 
+
 class JourneyActions(StatesGroup):
     my_location = State()
+    new_task = State()
+    confirm_new_task = State()
+    delete_task = State()

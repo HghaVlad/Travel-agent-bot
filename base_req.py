@@ -1,7 +1,7 @@
 from datetime import timedelta
 from sqlalchemy import create_engine, and_, update, delete, func, or_, not_
 from sqlalchemy.orm import Session
-from models.DBSM import User, FriendRequest, Journey, Location, Note
+from models.DBSM import User, FriendRequest, Journey, Location, Note, Task
 
 engine = create_engine("postgresql://postgres:postgrespw@localhost:55000/postgres")
 
@@ -219,3 +219,28 @@ def get_location(location_id):
     location = session.query(Location).filter(Location.id == location_id).first()
     return location
 
+
+def get_tasks(journey_id, telegram_id):
+    user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
+    tasks = session.query(Task).filter(and_(Task.journey_id == journey_id, Task.user_id == user.id)).order_by(Task.id).all()
+
+    return tasks
+
+
+def change_status_task(task_id):
+    task = session.query(Task).filter(Task.id == int(task_id)).first()
+    task.is_completed = int(not(task.is_completed))
+    session.commit()
+
+
+def add_new_task(journey_id, telegram_id, task_name):
+    user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
+    task = Task(journey_id=journey_id, user_id=user.id, name=task_name)
+    session.add(task)
+    session.commit()
+
+
+def delete_task(task_id):
+    task = session.query(Task).filter(Task.id == int(task_id)).first()
+    session.delete(task)
+    session.commit()

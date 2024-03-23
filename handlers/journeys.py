@@ -5,15 +5,17 @@ from bot import dp, bot
 from filters import IsLogin, IsJourneyShare
 from base_req import get_user_journeys, get_journeys_by_traveller, make_journey, claim_journey, \
     update_journey_name, update_journey_description, update_journey_status, update_journey_locations, delete_journey, \
-    get_notes, create_note, change_note_public, get_location
+    get_notes, create_note, change_note_public, get_location, delete_task, add_new_task, get_tasks, change_status_task
 from states import NewJourney, EditJourney, CreateNote, JourneyActions
 from keyboards import cancel_keyboard, journey_menu_keyboard, confirm_keyboard, main_menu_keyboard, \
     see_journey_back, see_journey_next, share_journey, edit_journey, journey_edit_keyboard, journey_edit_status_keyboard,\
     address_journey, remove_journey, journey_delete_keyboard, notes_back, notes_next, notes_public, notes_private, \
     notes_delete, notes_journey, notes_journey_create, notes_type_keyboard, notes_back_to_journey, route_journey, \
-    journey_comeback_keyboard, journey_route_keyboard, journey_route_change_zoom, journey_route_my_location
+    journey_comeback_keyboard, journey_route_keyboard, journey_route_change_zoom, journey_route_my_location,\
+    weather_journey, journey_comeback_button, journey_weather_back, journey_weather_next, journey_task_keyboard, tasks_journey
 from utils import get_date
 from api.osm import get_address, route_between_locations
+from api.weather import get_weather_forecast
 
 user_journey_data = {}
 
@@ -186,7 +188,81 @@ async def journeys_callback(call: CallbackQuery):
             user_journey_data[call.message.chat.id]["zoom"] += 1
             await call.answer("Пожалуйста подождите")
             await show_route(call.message, edit=False)
-    
+
+    elif call.data == "journey_weather":
+        locations = user_journey_data[call.message.chat.id]['journeys'][user_journey_data[call.message.chat.id]['step']].locations
+        keyboard = InlineKeyboardMarkup(row_width=1)
+        for i, location in enumerate(locations):
+            keyboard.add(InlineKeyboardButton(location.name, callback_data=f"journey_weather_choose?{i}"))
+        keyboard.add(journey_comeback_button)
+        await call.message.edit_text("<b>Выберите локацию, в которой хотите посмотреть прогноз погоды на следующие 15 суток</b>", reply_markup=keyboard)
+    elif call.data.startswith("journey_weather_choose"):
+        i = int(call.data.split("?")[1])
+        location = user_journey_data[call.message.chat.id]['journeys'][user_journey_data[call.message.chat.id]['step']].locations[i]
+        data = get_weather_forecast(location.lat, location.lon)
+        user_journey_data[call.message.chat.id]["weather_list"] = data
+        user_journey_data[call.message.chat.id]["weather_step"] = 0
+        await see_weather(call.message)
+    elif call.data == "journey_weather_back":
+        if user_journey_data[call.message.chat.id]["weather_step"] > 0:
+            user_journey_data[call.message.chat.id]["weather_step"] -=1
+            await see_weather(call.message)
+    elif call.data == "journey_weather_next":
+        if user_journey_data[call.message.chat.id]["weather_step"] < 14:
+            user_journey_data[call.message.chat.id]["weather_step"] +=1
+            await see_weather(call.message)
+
+    elif call.data == "journey_tasks":
+        await call.message.edit_text("<b>Вы можете поставить цели на свое путешествие и отмечать выполненные задачи</b>", reply_markup=journey_task_keyboard)
+    elif call.data == "journey_tasks_my":
+        tasks = get_tasks(user_journey_data[call.message.chat.id]['journeys'][user_journey_data[call.message.chat.id]['step']].id, call.message.chat.id)
+        if len(tasks) == 0:
+            await call.answer("У вас еще нет целей")
+        else:
+            keyboard = InlineKeyboardMarkup(row_width=1)
+            for task in tasks:
+                if task.is_completed == 1:
+                    keyboard.add(InlineKeyboardButton(f"{task.name} - ✅", callback_data=f"journey_tasks_change_status?{task.id}"))
+                else:
+                    keyboard.add(InlineKeyboardButton(f"{task.name} - ☑️", callback_data=f"journey_tasks_change_status?{task.id}"))
+            keyboard.add(journey_comeback_button)
+            await call.message.edit_text("<b>Ваши цели:</b>\n<i>Нажимайте, чтобы изменить статус</i>", reply_markup=keyboard)
+
+    elif call.data.startswith("journey_tasks_change_status"):
+        task_id = call.data.split("?")[1]
+        change_status_task(task_id)
+        tasks = get_tasks(user_journey_data[call.message.chat.id]['journeys'][user_journey_data[call.message.chat.id]['step']].id, call.message.chat.id)
+        keyboard = InlineKeyboardMarkup(row_width=1)
+        for task in tasks:
+            if task.is_completed == 1:
+                keyboard.add(
+                    InlineKeyboardButton(f"{task.name} - ✅", callback_data=f"journey_tasks_change_status?{task.id}"))
+            else:
+                keyboard.add(
+                    InlineKeyboardButton(f"{task.name} - ☑️", callback_data=f"journey_tasks_change_status?{task.id}"))
+        keyboard.add(journey_comeback_button)
+        await call.message.edit_reply_markup(keyboard)
+
+    elif call.data == "journey_tasks_add":
+        await JourneyActions.new_task.set()
+        await call.message.delete()
+        await call.message.answer("<b>Введите новую цель</b>", reply_markup=cancel_keyboard)
+    elif call.data == "journey_tasks_delete":
+        tasks = get_tasks(
+            user_journey_data[call.message.chat.id]['journeys'][user_journey_data[call.message.chat.id]['step']].id,
+            call.message.chat.id)
+        keyboard = InlineKeyboardMarkup(row_width=1)
+        for task in tasks:
+            keyboard.add(InlineKeyboardButton(f"{task.name}", callback_data=f"journey_tasks_delete?{task.id}"))
+        keyboard.add(journey_comeback_button)
+        await call.message.edit_text("<b>Выберите цель, которую хотите удалить</b>", reply_markup=keyboard)
+    elif call.data.startswith("journey_tasks_delete?"):
+        taskid = call.data.split("?")[1]
+        await JourneyActions.delete_task.set()
+        user_journey_data[call.message.chat.id]["delete_task"] = taskid
+        await call.message.delete()
+        await call.message.answer("<b>Вы хотите удалить эту цель?</b>", reply_markup=confirm_keyboard)
+
     elif call.data == "journeys_comeback":
         await see_journey(call.message)
 
@@ -200,7 +276,7 @@ async def see_journey(message: Message):
     keyboard.add(see_journey_back, step_button, see_journey_next)
     if journey.user.telegram_id == str(message.chat.id):
         keyboard.add(edit_journey, share_journey, remove_journey)
-    keyboard.add(address_journey, route_journey, notes_journey, notes_journey_create)
+    keyboard.add(address_journey, route_journey, weather_journey, tasks_journey, notes_journey, notes_journey_create)
     try:
         await message.edit_text("<b>Ваши путешествия</b>\n\n"
                                 f"<b>Id путешествия:</b> {journey.id}\n"
@@ -538,6 +614,59 @@ async def journey_route_get_location_text(message: Message, state: FSMContext):
         await my_journeys(message)
     else:
         await message.answer("<b>Отправьте местоположение</b>")
+
+
+async def see_weather(message: Message):
+    data = user_journey_data[message.chat.id]["weather_list"][user_journey_data[message.chat.id]["weather_step"]]
+    keyboard = InlineKeyboardMarkup()
+    button = InlineKeyboardButton(text=f"{user_journey_data[message.chat.id]['weather_step']+1}/15", callback_data="-")
+    keyboard.add(journey_weather_back, button, journey_weather_next, journey_comeback_button)
+    await message.edit_text(f"📅 <b>Дата:</b> {data[0]}\n"
+                            f"🌡️ <b>Температура:</b> {data[1]}°C\n"
+                            f"🌞 <b>Ощущается как:</b> {data[2]}°C\n"
+                            f"💧 <b>Влажность:</b> {data[3]}%\n"
+                            f"💨 <b>Скорость ветра: </b> {data[4]} км/ч\n"
+                            f"🌅 <b>Восход:</b> {data[5]}\n"
+                            f"🌇 <b>Закат:</b> {data[6]}"
+                            , reply_markup=keyboard)
+
+
+@dp.message_handler(lambda message: message.text == "Отмена", state=JourneyActions.new_task)
+async def cancel_new_task(message: Message, state: FSMContext):
+    await state.finish()
+    await message.answer("<b>Вы отменили добавление</b>", reply_markup=main_menu_keyboard)
+    await see_journey(message)
+
+@dp.message_handler(state=JourneyActions.new_task)
+async def new_task(message: Message, state: FSMContext):
+    await state.update_data(new_task=message.text)
+    await message.answer("<b>Вы хотите создать новую цель?</b>", reply_markup=confirm_keyboard)
+    await JourneyActions.confirm_new_task.set()
+
+
+@dp.message_handler(state=JourneyActions.confirm_new_task)
+async def confirm_new_task(message: Message, state: FSMContext):
+    if message.text == "Да":
+        journey_id = user_journey_data[message.chat.id]['journeys'][user_journey_data[message.chat.id]['step']].id
+        data = await state.get_data()
+        add_new_task(journey_id, message.chat.id, data["new_task"])
+        await message.answer("<b>Вы успешно добавили новую цель</b>", reply_markup=main_menu_keyboard)
+    else:
+        await message.answer("<b>Добавление отменено</b>", reply_markup=main_menu_keyboard)
+    await state.finish()
+    await see_journey(message)
+
+
+@dp.message_handler(state=JourneyActions.delete_task)
+async def confirm_delete_task(message: Message, state: FSMContext):
+    if message.text == "Да":
+        delete_task(user_journey_data[message.chat.id]["delete_task"])
+        await state.finish()
+        await message.answer("<b>Вы успешно удалили цель</b>", reply_markup=main_menu_keyboard)
+    else:
+        await message.answer("<b>Вы отменили удаление</b>", reply_markup=main_menu_keyboard)
+    await state.finish()
+
 
 @dp.message_handler()
 async def any_text(message: Message):
