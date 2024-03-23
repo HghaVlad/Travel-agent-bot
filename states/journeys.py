@@ -22,3 +22,6 @@ class CreateNote(StatesGroup):
     photo = State()
     file = State()
     confirm = State()
+
+class JourneyActions(StatesGroup):
+    my_location = State()

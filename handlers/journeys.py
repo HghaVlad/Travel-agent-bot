@@ -1,4 +1,4 @@
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto, InputFile
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.dispatcher import FSMContext
 from aiogram.utils.deep_linking import get_start_link, decode_payload
 from bot import dp, bot
@@ -6,12 +6,12 @@ from filters import IsLogin, IsJourneyShare
 from base_req import get_user_journeys, get_journeys_by_traveller, make_journey, claim_journey, \
     update_journey_name, update_journey_description, update_journey_status, update_journey_locations, delete_journey, \
     get_notes, create_note, change_note_public, get_location
-from states import NewJourney, EditJourney, CreateNote
+from states import NewJourney, EditJourney, CreateNote, JourneyActions
 from keyboards import cancel_keyboard, journey_menu_keyboard, confirm_keyboard, main_menu_keyboard, \
     see_journey_back, see_journey_next, share_journey, edit_journey, journey_edit_keyboard, journey_edit_status_keyboard,\
     address_journey, remove_journey, journey_delete_keyboard, notes_back, notes_next, notes_public, notes_private, \
-    notes_delete, notes_journey, notes_journey_create, notes_type_keyboard, notes_back_to_journey, distance_journey, \
-    journey_comeback_keyboard, journey_route_keyboard, journey_route_change_zoom, route_journey
+    notes_delete, notes_journey, notes_journey_create, notes_type_keyboard, notes_back_to_journey, route_journey, \
+    journey_comeback_keyboard, journey_route_keyboard, journey_route_change_zoom, journey_route_my_location
 from utils import get_date
 from api.osm import get_address, route_between_locations
 
@@ -136,39 +136,17 @@ async def journeys_callback(call: CallbackQuery):
         change_note_public(note_id, 0)
         await see_note(call.message)
 
-    elif call.data == "journey_distance":
-        keyboard = InlineKeyboardMarkup()
-        for location in user_journey_data[call.message.chat.id]['journeys'][user_journey_data[call.message.chat.id]['step']].locations:
-            keyboard.add(InlineKeyboardButton(location.name, callback_data=f"journey_distance_first?{location.id}"))
-        await call.message.edit_text("<b>Выберите первую локацию</b>", reply_markup=keyboard)
-
-    elif call.data.startswith("journey_distance_first"):
-        first_location = int(call.data.split("?")[1])
-        user_journey_data[call.message.chat.id]["first_locations"] = first_location
-        keyboard = InlineKeyboardMarkup()
-        for location in user_journey_data[call.message.chat.id]['journeys'][user_journey_data[call.message.chat.id]['step']].locations:
-            if location.id != first_location:
-                keyboard.add(InlineKeyboardButton(location.name, callback_data=f"journey_distance_second?{location.id}"))
-        await call.message.edit_text("<b>Выберите вторую локацию</b>", reply_markup=keyboard)
-
-    elif call.data.startswith("journey_distance_second"):
-        second_location = int(call.data.split("?")[1])
-        first_location = user_journey_data[call.message.chat.id]["first_locations"]
-        address1 = get_location(first_location)
-        address2 = get_location(second_location)
-        distance = get_distance(address1, address2)
-        print(distance)
-        distance = distance['features'][0]['properties']['segments'][0]['distance'] /1000
-        await call.message.edit_text("<b>Расстояние между локациями:</b>\n\n"
-                                     f"<b>Адрес 1</b> {address1.address}\n"
-                                     f"<b>Адрес 2</b> {address2.address}\n"
-                                     f"<b>Расстояние на машине:</b> {distance:.4f} км.", reply_markup=journey_comeback_keyboard)
-
     elif call.data == "journey_make_route":
         keyboard = InlineKeyboardMarkup()
         for location in user_journey_data[call.message.chat.id]['journeys'][user_journey_data[call.message.chat.id]['step']].locations:
             keyboard.add(InlineKeyboardButton(location.name, callback_data=f"journey_route_first_location?{location.id}"))
+        keyboard.add(InlineKeyboardButton("Мое текущее местоположение", callback_data="journey_route_first_My"))
         await call.message.edit_text("<b>Выберите первую локацию</b>", reply_markup=keyboard)
+
+    elif call.data == "journey_route_first_My":
+        await call.message.delete()
+        await JourneyActions.my_location.set()
+        await call.message.answer("<b>Отправьте ваше местоположение</b>", reply_markup=journey_route_my_location)
 
     elif call.data.startswith("journey_route_first_location"):
         first_location = int(call.data.split("?")[1])
@@ -201,10 +179,12 @@ async def journeys_callback(call: CallbackQuery):
     elif call.data == "journey_route_zoom_lower":
         if user_journey_data[call.message.chat.id]["zoom"] > 1:
             user_journey_data[call.message.chat.id]["zoom"] -= 1
+            await call.answer("Пожалуйста подождите")
             await show_route(call.message, edit=False)
     elif call.data == "journey_route_zoom_higher":
-        if user_journey_data[call.message.chat.id]["zoom"] < 17:
+        if user_journey_data[call.message.chat.id]["zoom"] < 19:
             user_journey_data[call.message.chat.id]["zoom"] += 1
+            await call.answer("Пожалуйста подождите")
             await show_route(call.message, edit=False)
     
     elif call.data == "journeys_comeback":
@@ -516,17 +496,51 @@ async def show_route(message: Message, edit=True):
         way = "Пешком"
     elif route_type == "cycling-road":
         way = "Велосипед"
-
-    address1 = get_location(first_location)
+    if first_location == "my":
+        location1 = (user_journey_data[message.chat.id]["first_locations_lat"], user_journey_data[message.chat.id]["first_locations_lon"])
+    else:
+        address1 = get_location(first_location)
+        location1 = (address1.lat, address1.lon)
     address2 = get_location(second_location)
-    location1, location2 = (address1.lat, address1.lon), (address2.lat, address2.lon)
+    location2 = (address2.lat, address2.lon)
     if edit:
         await message.edit_text("<b>Пожалуйста подождите</b>")
     image, distance = route_between_locations(location1, location2, route_type, zoom)
     await message.delete()
+    with open(image, "rb") as image:
+        await bot.send_photo(message.chat.id, image, caption=f"<b>Маршрут от</b> {'Ваше текущее местоположение' if first_location == 'my' else address1.address}"
+                                                             f"<b>до</b> {address2.address}\n"
+                                                             f"<b>Расстояние:</b> {distance} метров\n"
+                                                             f"<b>Способ передвижения:</b> {way}",
+                             reply_markup=journey_route_change_zoom)
 
-    await bot.send_photo(message.chat.id, image, caption=f"<b>Маршрут от</b> {address1.address} "
-                                                              f"<b>до</b> {address2.address}\n"
-                                                              f"<b>Расстояние:</b> {distance} метров\n"
-                                                              f"<b>Способ передвижения</b> {way}",
-                         reply_markup=journey_route_change_zoom)
+
+@dp.message_handler(state=JourneyActions.my_location, content_types=['location'])
+async def journey_route_get_location(message: Message, state: FSMContext):
+    lat = message.location.latitude
+    lon = message.location.longitude
+    await state.finish()
+    user_journey_data[message.chat.id]["first_locations"] = "my"
+    user_journey_data[message.chat.id]["first_locations_lat"] = lat
+    user_journey_data[message.chat.id]["first_locations_lon"] = lon
+    await message.answer("<b>Местоположение принято</b>", reply_markup=main_menu_keyboard)
+    keyboard = InlineKeyboardMarkup()
+    for location in user_journey_data[message.chat.id]['journeys'][user_journey_data[message.chat.id]['step']].locations:
+        keyboard.add(InlineKeyboardButton(location.name, callback_data=f"journey_route_second_location?{location.id}"))
+    await message.answer("<b>Выберите вторую локацию</b>", reply_markup=keyboard)
+
+
+@dp.message_handler(state=JourneyActions.my_location)
+async def journey_route_get_location_text(message: Message, state: FSMContext):
+    if message.text == "Отмена":
+        await state.finish()
+        await message.answer("<b>Построение маршрута отменено</b>", reply_markup=main_menu_keyboard)
+        await my_journeys(message)
+    else:
+        await message.answer("<b>Отправьте местоположение</b>")
+
+@dp.message_handler()
+async def any_text(message: Message):
+    await message.answer("Welcome", reply_markup=main_menu_keyboard)
+
+

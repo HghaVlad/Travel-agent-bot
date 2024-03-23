@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
 journey_menu_keyboard = InlineKeyboardMarkup(row_width=1)
 see_journeys = InlineKeyboardButton("Просмотр путешествий", callback_data="journeys_see")
@@ -16,7 +16,6 @@ see_journey_next = InlineKeyboardButton("➡️️", callback_data="journey_see_
 share_journey = InlineKeyboardButton("Поделиться", callback_data="journey_share")
 edit_journey = InlineKeyboardButton("Редактировать", callback_data="journey_edit")
 address_journey = InlineKeyboardButton("Посмотреть адреса", callback_data="journey_address")
-distance_journey = InlineKeyboardButton("Посмотреть расстояния", callback_data="journey_distance")
 route_journey = InlineKeyboardButton("Построить маршрут", callback_data="journey_make_route")
 remove_journey = InlineKeyboardButton("Удалить", callback_data="journey_delete")
 notes_journey = InlineKeyboardButton("Заметки", callback_data="journey_notes")
@@ -66,3 +65,6 @@ journey_route_change_zoom = InlineKeyboardMarkup(row_width=2)
 journey_route_zoom_lower = InlineKeyboardButton("Уменьшить масштаб", callback_data="journey_route_zoom_lower")
 journey_route_zoom_higher = InlineKeyboardButton("Увеличить масштаб", callback_data="journey_route_zoom_higher")
 journey_route_change_zoom.add(journey_route_zoom_lower, journey_route_zoom_higher, journey_comeback_button)
+
+journey_route_my_location = ReplyKeyboardMarkup()
+journey_route_my_location.add(KeyboardButton("Отправить местолположение", request_location=True))
