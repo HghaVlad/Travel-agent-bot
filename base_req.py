@@ -13,6 +13,9 @@ def get_user_name(telegram_id):
     return user
 
 
+def get_user_telegram_id(user_id):
+    return session.query(User.telegram_id).filter(User.id == user_id).first()
+
 def get_user_data(telegram_id):
     user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
     return user
@@ -269,8 +272,7 @@ def settle_expense(transaction_id):
 def get_journey_users(journey_id):
     journey = session.query(Journey).filter(Journey.id == journey_id).first()
     user = journey.user
-    travelers = journey.travelers.copy()
-    travelers.remove(user)
+    travelers = journey.travelers
     friends = []
     if journey.is_public:
         friends = user.friends

@@ -6,7 +6,8 @@ from filters import IsLogin, IsJourneyShare
 from base_req import get_user_journeys, get_journeys_by_traveller, make_journey, claim_journey, \
     update_journey_name, update_journey_description, update_journey_status, update_journey_locations, delete_journey, \
     get_notes, create_note, change_note_public, get_location, delete_task, add_new_task, get_tasks, change_status_task, \
-    get_user_debts, settle_expense, get_non_settled_expenses, get_user_expenses, add_transaction, get_journey_users
+    get_user_debts, settle_expense, get_non_settled_expenses, get_user_expenses, add_transaction, get_journey_users, \
+    get_user_name, get_user_telegram_id
 from states import NewJourney, EditJourney, CreateNote, JourneyActions, CreateExpense
 from keyboards import cancel_keyboard, journey_menu_keyboard, confirm_keyboard, main_menu_keyboard, \
     see_journey_back, see_journey_next, share_journey, edit_journey, journey_edit_keyboard, journey_edit_status_keyboard,\
@@ -745,7 +746,7 @@ async def create_expense_amount(message: Message, state: FSMContext):
         await state.update_data(amount=int(message.text), expenses_users=[], journey_users=users)
         keyboard = InlineKeyboardMarkup(row_width=2)
         for user in users:
-            if user.telegram_id != message.chat.id:
+            if user.telegram_id != str(message.chat.id):
                 keyboard.add(InlineKeyboardButton(text=user.name, callback_data=f"journey_new_expense_user?{user.id}"))
         keyboard.add(InlineKeyboardButton("📝Создать трату", callback_data="journey_create_expense"))
         await message.answer("<b>Выберите пользователей для распределения расхода:</b>", reply_markup=keyboard)
@@ -754,13 +755,23 @@ async def create_expense_amount(message: Message, state: FSMContext):
         await message.answer("<b>Сумма траты должна быть целым числом большим 0</b>")
 
 
+async def notify_user(user_id, payer_name, name, amount):
+    user = get_user_telegram_id(user_id)
+    await bot.send_message(user.telegram_id, "<b>У вас новый долг</b>\n\n"
+                           f"<b>Создатель траты:</b> {payer_name}\n"
+                           f"<b>Название траты:</b> {name}\n"
+                           f"<b>Необходимо оплатить:</b> {amount} руб.")
+
+
 @dp.message_handler(state=CreateExpense.confirm)
 async def confirm_create_expense(message: Message, state: FSMContext):
     if message.text == "Да":
         data = await state.get_data()
         journey = user_journey_data[message.chat.id]['journeys'][user_journey_data[message.chat.id]['step']]
+        payer_name = get_user_name(message.chat.id)[0]
         for user in data["expenses_users"]:
             add_transaction(message.chat.id, user, data["transaction_amount"], journey.id, data["name"])
+            await notify_user(user, payer_name, data["name"], data["transaction_amount"])
         await message.answer("<b>Трата успешно создана</b>", reply_markup=main_menu_keyboard)
     else:
         await message.answer("<b>Вы отменили создание траты", reply_markup=main_menu_keyboard)
@@ -782,7 +793,7 @@ async def create_expense_callback(call: CallbackQuery, state: FSMContext):
         await state.update_data(expenses_users=expenses_users)
         keyboard = InlineKeyboardMarkup(row_width=2)
         for user in journey_users:
-            if user.telegram_id != call.message.chat.id:
+            if user.telegram_id != str(call.message.chat.id):
                 keyboard.add(InlineKeyboardButton(
                     text=f"{user.name} {'✅' if user.id in expenses_users else ''}", callback_data=f"journey_new_expense_user?{user.id}"))
         keyboard.add(InlineKeyboardButton("📝Создать трату", callback_data="journey_create_expense"))

@@ -86,7 +86,7 @@ class Note(Base):
     journey = relationship("Journey")
     user_id = mapped_column(ForeignKey("User.id"))
     user = relationship("User")
-    is_public = mapped_column("is_public", BOOLEAN, default=0)
+    is_public = mapped_column("is_public", BOOLEAN, default=False)
     text = mapped_column("text", Text, nullable=True)
     photo_file_id = mapped_column("photo_file_id", Text, nullable=True)
     document_file_id = mapped_column("document_file_id", Text, nullable=True)
@@ -100,7 +100,7 @@ class Task(Base):
     user_id = mapped_column(ForeignKey("User.id"))
     user = relationship("User")
     name = mapped_column("name", Text)
-    is_completed = mapped_column("is_completed", BOOLEAN, default=0)
+    is_completed = mapped_column("is_completed", BOOLEAN, default=False)
 
 
 class Transaction(Base):
@@ -112,7 +112,7 @@ class Transaction(Base):
     debtor_id = mapped_column(ForeignKey("User.id"))
     name = mapped_column("name", Text)
     amount = mapped_column("amount", Integer)
-    is_settled = mapped_column("is_settled", BOOLEAN, default=0)
+    is_settled = mapped_column("is_settled", BOOLEAN, default=False)
     date = mapped_column("date", Date, default=datetime.now)
 
     payer = relationship("User", foreign_keys=[payer_id])
