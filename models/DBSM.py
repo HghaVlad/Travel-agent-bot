@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Integer, VARCHAR, ARRAY, TIMESTAMP, Date, ForeignKey, Table, Column, Text, DECIMAL
+from sqlalchemy import create_engine, Integer, VARCHAR, ARRAY, TIMESTAMP, Date, ForeignKey, Table, Column, Text, DECIMAL, BOOLEAN
 from sqlalchemy.orm import declarative_base, mapped_column, relationship
 from datetime import datetime
 
@@ -52,7 +52,7 @@ class Journey(Base):
     user_id = mapped_column(ForeignKey("User.id"))
     user = relationship("User")
     travelers = relationship("User", secondary=association_table)
-    is_public = mapped_column("is_public", Integer, default=0)
+    is_public = mapped_column("is_public", BOOLEAN, default=0)
     date_created = mapped_column("date_created", TIMESTAMP, default=datetime.now)
 
     locations = relationship("Location", backref="Journey")
@@ -86,7 +86,7 @@ class Note(Base):
     journey = relationship("Journey")
     user_id = mapped_column(ForeignKey("User.id"))
     user = relationship("User")
-    is_public = mapped_column("is_public", Integer, default=0)
+    is_public = mapped_column("is_public", BOOLEAN, default=0)
     text = mapped_column("text", Text, nullable=True)
     photo_file_id = mapped_column("photo_file_id", Text, nullable=True)
     document_file_id = mapped_column("document_file_id", Text, nullable=True)
@@ -100,6 +100,22 @@ class Task(Base):
     user_id = mapped_column(ForeignKey("User.id"))
     user = relationship("User")
     name = mapped_column("name", Text)
-    is_completed = mapped_column("is_completed", Integer, default=0)
+    is_completed = mapped_column("is_completed", BOOLEAN, default=0)
+
+
+class Transaction(Base):
+    __tablename__ = "Transaction"
+    id = mapped_column(Integer, primary_key=True)
+    journey_id = mapped_column(ForeignKey("Journey.id"))
+    journey = relationship("Journey")
+    payer_id = mapped_column(ForeignKey("User.id"))
+    debtor_id = mapped_column(ForeignKey("User.id"))
+    name = mapped_column("name", Text)
+    amount = mapped_column("amount", Integer)
+    is_settled = mapped_column("is_settled", BOOLEAN, default=0)
+    date = mapped_column("date", Date, default=datetime.now)
+
+    payer = relationship("User", foreign_keys=[payer_id])
+    debtor = relationship("User", foreign_keys=[debtor_id])
 
 #Base.metadata.create_all(engine)

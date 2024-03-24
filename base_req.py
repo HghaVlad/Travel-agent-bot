@@ -1,7 +1,7 @@
 from datetime import timedelta
 from sqlalchemy import create_engine, and_, update, delete, func, or_, not_
 from sqlalchemy.orm import Session
-from models.DBSM import User, FriendRequest, Journey, Location, Note, Task
+from models.DBSM import User, FriendRequest, Journey, Location, Note, Task, Transaction
 
 engine = create_engine("postgresql://postgres:postgrespw@localhost:55000/postgres")
 
@@ -101,10 +101,10 @@ def get_user_journeys(telegram_id):
     user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
     journeys = session.query(Journey.id).filter(Journey.user_id == user.id).all()
     friends_journeys = session.query(Journey.id).filter(
-        and_(Journey.user_id.in_([user.id for user in user.friends]), Journey.is_public == 1)).all()
+        and_(Journey.user_id.in_([user.id for user in user.friends]), Journey.is_public == True)).all()
     travelers_journeys = session.query(Journey.id).filter(and_(Journey.travelers.any(User.id == user.id), not_(
         or_(Journey.user_id == user.id,
-            and_(Journey.user_id.in_([user.id for user in user.friends]), Journey.is_public == 1))))).all()
+            and_(Journey.user_id.in_([user.id for user in user.friends]), Journey.is_public == True))))).all()
     return journeys, friends_journeys, travelers_journeys
 
 
@@ -112,7 +112,7 @@ def get_journeys_by_traveller(telegram_id):
     user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
     journeys = session.query(Journey).filter(or_(Journey.user_id == user.id,
                                                  and_(Journey.user_id.in_([user.id for user in user.friends]),
-                                                      Journey.is_public == 1),
+                                                      Journey.is_public == True),
                                                  Journey.travelers.any(User.id == user.id))).all()
     return journeys
 
@@ -198,7 +198,7 @@ def delete_journey(journey):
 
 def get_notes(journey_id, telegram_id):
     user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
-    notes = session.query(Note).filter(and_(Note.journey_id == journey_id, or_(Note.is_public == 1, Note.user_id == user.id))).all()
+    notes = session.query(Note).filter(and_(Note.journey_id == journey_id, or_(Note.is_public == True, Note.user_id == user.id))).all()
     return notes
 
 
@@ -244,3 +244,48 @@ def delete_task(task_id):
     task = session.query(Task).filter(Task.id == int(task_id)).first()
     session.delete(task)
     session.commit()
+
+
+def add_transaction(telegram_id, debtor_id, amount, journey_id, name):
+    user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
+    new_transaction = Transaction(payer_id=user.id, debtor_id=debtor_id, amount=amount, journey_id=journey_id, name=name)
+    session.add(new_transaction)
+    session.commit()
+    return new_transaction.id
+
+
+def get_user_debts(telegram_id):
+    user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
+    debts = session.query(Transaction).filter(Transaction.debtor_id == user.id).all()
+    return debts
+
+
+def settle_expense(transaction_id):
+    transaction = session.query(Transaction).filter_by(id=transaction_id).first()
+    transaction.is_settled = True
+    session.commit()
+
+
+def get_journey_users(journey_id):
+    journey = session.query(Journey).filter(Journey.id == journey_id).first()
+    user = journey.user
+    travelers = journey.travelers.copy()
+    travelers.remove(user)
+    friends = []
+    if journey.is_public:
+        friends = user.friends
+    all_users = list(set(friends + travelers))
+
+    return all_users
+
+
+def get_user_expenses(telegram_id):
+    user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
+    expenses = session.query(Transaction).filter(Transaction.payer_id == user.id).order_by(Transaction.date).all()
+    return expenses
+
+
+def get_non_settled_expenses(telegram_id):
+    user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
+    expenses = session.query(Transaction).filter(Transaction.payer_id == user.id, Transaction.is_settled == False).all()
+    return expenses

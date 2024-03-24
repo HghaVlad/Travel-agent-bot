@@ -23,6 +23,7 @@ address_journey = InlineKeyboardButton("Адреса", callback_data="journey_ad
 route_journey = InlineKeyboardButton("Построить маршрут", callback_data="journey_make_route")
 weather_journey = InlineKeyboardButton("Погода", callback_data="journey_weather")
 tasks_journey = InlineKeyboardButton("Цели", callback_data="journey_tasks")
+expenses_journey = InlineKeyboardButton(text="Расходы", callback_data="journey_expenses")
 remove_journey = InlineKeyboardButton("Удалить", callback_data="journey_delete")
 notes_journey = InlineKeyboardButton("Заметки", callback_data="journey_notes")
 notes_journey_create = InlineKeyboardButton("Создать заметку", callback_data="journey_notes_crate")
@@ -59,7 +60,6 @@ notes_type_file = InlineKeyboardButton("Файл", callback_data="journey_notes_
 notes_type_keyboard.add(notes_type_text, notes_type_photo, notes_type_file, journey_comeback_button)
 
 
-
 journey_route_keyboard = InlineKeyboardMarkup(row_width=1)
 journey_route_car = InlineKeyboardButton("Машина", callback_data="journey_make_route_car")
 journey_route_feet = InlineKeyboardButton("Пешком", callback_data="journey_make_route_feet")
@@ -84,3 +84,17 @@ journey_tasks_add = InlineKeyboardButton("Добавить цель", callback_d
 journey_task_keyboard.row(InlineKeyboardButton("Мои цели", callback_data="journey_tasks_my"))
 journey_task_keyboard.row(journey_tasks_add, journey_tasks_delete)
 journey_task_keyboard.row(journey_comeback_button)
+
+expenses_keyboard = InlineKeyboardMarkup(row_width=2)
+my_debts = InlineKeyboardButton(text="Мои долги", callback_data="journey_my_debts")
+my_expenses = InlineKeyboardButton(text="Мои траты", callback_data="journey_my_expenses")
+expenses_keyboard.add(my_debts, my_expenses)
+expenses_keyboard.row(InlineKeyboardButton(text="Создать новую трату", callback_data="journey_new_expense"))
+expenses_keyboard.row(journey_comeback_button)
+
+expenses_back_keyboard = InlineKeyboardMarkup()
+expenses_back_keyboard.add(InlineKeyboardButton("Отметить трату выплаченной", callback_data="journey_expenses_settle"))
+expenses_back_keyboard.add(InlineKeyboardButton("Назад к расходам", callback_data="journey_expenses"))
+
+debts_back_keyboard = InlineKeyboardMarkup()
+debts_back_keyboard.add(InlineKeyboardButton("Назад к расходам", callback_data="journey_expenses"))

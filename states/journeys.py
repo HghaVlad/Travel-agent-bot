@@ -29,3 +29,11 @@ class JourneyActions(StatesGroup):
     new_task = State()
     confirm_new_task = State()
     delete_task = State()
+    settle_expense = State()
+
+
+class CreateExpense(StatesGroup):
+    name = State()
+    amount = State()
+    users = State()
+    confirm = State()
