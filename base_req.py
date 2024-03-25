@@ -1,9 +1,10 @@
 from datetime import timedelta
-from sqlalchemy import create_engine, and_, update, delete, func, or_, not_
+from sqlalchemy import create_engine, and_, update, func, or_, not_
 from sqlalchemy.orm import Session
 from models.DBSM import User, FriendRequest, Journey, Location, Note, Task, Transaction, friendship
+import os
 
-engine = create_engine("postgresql://postgres:postgrespw@localhost:55000/postgres")
+engine = create_engine(os.getenv("DATABASE_URL", "postgresql://postgres:postgrespw@localhost:55000/postgres"))
 
 session = Session(engine)
 
@@ -321,7 +322,7 @@ def change_traveler_status(telegram_id, username):
 
 def get_travelers(telegram_id):
     user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
-    users = session.query(User).filter(and_(User.age - 5 <= user.age, User.age + 5 >= user.age)).all()
+    users = session.query(User).filter(and_(User.age - 5 <= user.age, User.age + 5 >= user.age, User.is_search_traveller == True)).all()
     return user, users
 
 

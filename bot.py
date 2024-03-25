@@ -10,6 +10,8 @@ from filters import *
 from handlers import *
 
 async def starting(message):
+    from models.DBSM import Base, engine
+    Base.metadata.create_all(engine)
     await bot.send_message(578081663, "Started")
 
 if __name__ == '__main__':

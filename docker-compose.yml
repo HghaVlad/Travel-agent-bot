@@ -1,0 +1,32 @@
+version: '1.0'
+
+services:
+  bot:
+    build: .
+    container_name: aiogram_bot
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/database_name
+      - REDIS_HOST=redis
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:16
+    container_name: postgres_db
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=database_name
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+    container_name: redis_server
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:

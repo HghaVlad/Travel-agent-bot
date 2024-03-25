@@ -1,8 +1,10 @@
 from sqlalchemy import create_engine, Integer, VARCHAR, ARRAY, TIMESTAMP, Date, ForeignKey, Table, Column, Text, DECIMAL, BOOLEAN
 from sqlalchemy.orm import declarative_base, mapped_column, relationship
 from datetime import datetime
+import os
 
-engine = create_engine("postgresql://postgres:postgrespw@localhost:55000/postgres")
+
+engine = create_engine(os.getenv("DATABASE_URL", "postgresql://postgres:postgrespw@localhost:55000/postgres"))
 
 Base = declarative_base()
 
@@ -121,4 +123,3 @@ class Transaction(Base):
     payer = relationship("User", foreign_keys=[payer_id])
     debtor = relationship("User", foreign_keys=[debtor_id])
 
-#Base.metadata.create_all(engine)
