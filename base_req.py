@@ -1,7 +1,7 @@
 from datetime import timedelta
 from sqlalchemy import create_engine, and_, update, delete, func, or_, not_
 from sqlalchemy.orm import Session
-from models.DBSM import User, FriendRequest, Journey, Location, Note, Task, Transaction
+from models.DBSM import User, FriendRequest, Journey, Location, Note, Task, Transaction, friendship
 
 engine = create_engine("postgresql://postgres:postgrespw@localhost:55000/postgres")
 
@@ -22,8 +22,11 @@ def get_user_data(telegram_id):
     return user
 
 
-def make_user(data, telegram_id):
+def make_user(data, telegram_id, username):
     gender = "M"
+    is_search_traveller = False
+    if username:
+        is_search_traveller = True
     if data['gender'] == "Женщина":
         gender = "F"
     new_user = User(
@@ -34,7 +37,9 @@ def make_user(data, telegram_id):
         country=data['country'],
         city=data['city'],
         locations=data['locations'].split(","),
-        bio=data['bio']
+        bio=data['bio'],
+        username=username,
+        is_search_traveller=is_search_traveller
     )
     session.add(new_user)
     session.commit()
@@ -46,7 +51,19 @@ def update_user_value(telegram_id, new_value, column):
 
 
 def delete_user(telegram_id):
-    session.execute(delete(User).where(User.telegram_id == str(telegram_id)))
+    user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
+    session.query(friendship).filter((friendship.c.friend_a_id == user.id) | (friendship.c.friend_b_id == user.id)).delete()
+    session.query(Note).filter(Note.user_id == user.id).delete()
+    session.query(Task).filter(Task.user_id == user.id).delete()
+    session.query(Transaction).filter((Transaction.payer_id == user.id) | (Transaction.debtor_id == user.id)).delete()
+    journeys = session.query(Journey).filter(Journey.user_id ==user.id).all()
+    for journey in journeys:
+        session.query(Location).filter(Location.journey_id == journey.id).delete()
+        session.query(Note).filter(Note.journey_id == journey.id).delete()
+        session.query(Task).filter(Task.journey_id == journey.id).delete()
+        session.query(Transaction).filter(Transaction.journey_id == journey.id).delete()
+        session.delete(journey)
+    session.delete(user)
     session.commit()
 
 
@@ -294,9 +311,11 @@ def get_non_settled_expenses(telegram_id):
     return expenses
 
 
-def change_traveler_status(telegram_id):
+def change_traveler_status(telegram_id, username):
     user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
     user.is_search_traveller = not(user.is_search_traveller)
+    if username:
+        user.username = username
     session.commit()
 
 

@@ -3,7 +3,7 @@ from aiogram.dispatcher import FSMContext
 from base_req import get_user_name, make_user
 from keyboards import reg_menu_keyboard, main_menu_keyboard, gender_keyboard, reg_end_keyboard
 from states import RegistrationState
-from filters import IsNotLink
+from filters import IsNotLink, IsNotLogin
 from bot import dp
 
 
@@ -129,10 +129,14 @@ async def registration_confirm(message: Message, state: FSMContext):
     if message.text == "Да":
         data = await state.get_data()
         telegram_id = message.chat.id
-        make_user(data, telegram_id)
-
+        make_user(data, telegram_id, message.from_user.username)
         await message.answer("<b>Вы успешно зарегистрировались</b>", reply_markup=main_menu_keyboard)
     else:
         await message.answer("<b>Регистрация отменена</b>", reply_markup=reg_menu_keyboard)
 
     await state.finish()
+
+
+@dp.message_handler(IsNotLogin())
+async def not_registered(message: Message):
+    await message.answer("<b>Вы не зарегистрированы, нажмите /start</b>", reply_markup=ReplyKeyboardRemove())

@@ -555,6 +555,13 @@ async def see_note(message: Message):
         await bot.send_document(message.chat.id, note.document_file_id, reply_markup=keyboard)
 
 
+@dp.message_handler(lambda message: message.text == "Отмена", state=CreateNote)
+async def cancel_create_note(message: Message, state: FSMContext):
+    await state.finish()
+    await message.answer("<b>Создание заметки отменено</b>", reply_markup=main_menu_keyboard)
+    await see_journey(message)
+
+
 @dp.message_handler(state=CreateNote.text)
 async def create_note_text(message: Message, state: FSMContext):
     note_text = message.text
@@ -564,6 +571,7 @@ async def create_note_text(message: Message, state: FSMContext):
         await message.answer(f"<b>Вы хотите создать заметку со следующим текстом?</b>\n\n<i>{note_text}</i>", reply_markup=confirm_keyboard)
         await state.update_data(text=note_text)
         await CreateNote.confirm.set()
+
 
 
 @dp.message_handler(state=CreateNote.photo, content_types=["photo"])
@@ -595,10 +603,12 @@ async def confirm_note_text(message: Message, state: FSMContext):
         create_note(journey_id, message.chat.id, data.get("text"), data.get("photo"), data.get("file"))
         await message.answer("<b>Вы успешно создали заметку</b>", reply_markup=main_menu_keyboard)
         await state.finish()
+        await see_journey(message)
         return
 
     await message.answer("<b>Вы отменили создание заметки</b>", reply_markup=main_menu_keyboard)
     await state.finish()
+    await see_journey(message)
 
 
 async def show_route(message: Message, edit=True):
@@ -820,6 +830,6 @@ async def create_expense_callback(call: CallbackQuery, state: FSMContext):
 
 @dp.message_handler()
 async def any_text(message: Message):
-    await message.answer("Welcome", reply_markup=main_menu_keyboard)
+    await message.answer("<b>Главное меню</b>", reply_markup=main_menu_keyboard)
 
 

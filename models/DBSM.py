@@ -26,6 +26,7 @@ journey_notes = Table(
     Column('journey_id', Integer, ForeignKey('Journey.id'), primary_key=True)
 )
 
+
 class User(Base):
     __tablename__ = "User"
     id = mapped_column("id", Integer, primary_key=True)
@@ -37,7 +38,8 @@ class User(Base):
     city = mapped_column("city", VARCHAR(50))
     locations = mapped_column("locations", ARRAY(VARCHAR(50)))
     bio = mapped_column("bio", VARCHAR(500))
-    is_search_traveller = mapped_column("is_search_traveller", BOOLEAN, default=True)
+    is_search_traveller = mapped_column("is_search_traveller", BOOLEAN, default=False)
+    username = mapped_column("username", Text)
     date_joined = mapped_column("date_joined", TIMESTAMP, default=datetime.now)
 
     friends = relationship("User", secondary=friendship,

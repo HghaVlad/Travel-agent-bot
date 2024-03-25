@@ -1,5 +1,5 @@
 from datetime import timedelta, datetime
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 from aiogram.dispatcher import FSMContext
 from aiogram.utils.deep_linking import get_start_link, decode_payload
 from bot import dp, bot
@@ -172,7 +172,7 @@ async def process_bio(message: Message, state: FSMContext):
 async def profile_delete(message: Message, state: FSMContext):
     await state.finish()
     if message.text == "Да":
-        await message.answer("<b>Пользователь был успешно удален</b>", reply_markup=main_menu_keyboard)
+        await message.answer("<b>Пользователь был успешно удален</b>", reply_markup=ReplyKeyboardRemove())
         delete_user(message.chat.id)
 
         return
@@ -347,9 +347,14 @@ async def find_travelers(message: Message):
 @dp.callback_query_handler(lambda call: call.data and call.data.startswith("find_traveler"))
 async def find_traveler_call(call: CallbackQuery):
     if call.data == "find_traveler_change_status":
-        change_traveler_status(call.message.chat.id)
-        await call.answer("Вы изменили свой статус")
         user = get_user_data(call.message.chat.id)
+        username = call.from_user.username
+        if not user.is_search_traveller and username is None:
+            await call.answer("Username не определен, укажите его в настройках профиля Телеграм")
+            return
+        change_traveler_status(call.message.chat.id, username)
+
+        await call.answer("Вы изменили свой статус")
         await call.message.edit_text("<b>Вы можете найти попутчиков, у которых схожие интересы и похожие локации для поиска. \n"
                              "Вы можете отправить запрос человеку, который вас заинтересовал, а он может вам ответить.\n"
                              f"Ваш текущий статус:</b> {'Ищу попутчика' if user.is_search_traveller else 'Никого не ищу'}", reply_markup=search_traveller_keyboard)
@@ -359,7 +364,7 @@ async def find_traveler_call(call: CallbackQuery):
         if not user.is_search_traveller:
             await call.answer("В данный момент вы никого не ищите. Измените статус")
             return
-        if len(users) == 0:
+        if len(users) <= 1:
             await call.answer("Пока что никто не ищет себе попутчика")
             return
 
@@ -386,6 +391,7 @@ async def find_traveller_see(message: Message):
     keyboard = InlineKeyboardMarkup()
     button = InlineKeyboardButton(f"{user_data[message.chat.id]['recommend_step']+1}/{len(user_data[message.chat.id]['recommend_users'])}", callback_data="-")
     keyboard.add(search_traveller_back, button, search_traveller_next)
+    keyboard.add(InlineKeyboardButton("Написать пользователю", url=f"t.me/{user.username}"))
     await message.edit_text("<b>Найден попутчик</b>\n\n"
                             f"<b>Имя:</b> {user.name}\n"
                             f"<b>Пол пользователя:</b> {gender}\n"
