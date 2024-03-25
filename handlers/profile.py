@@ -400,9 +400,3 @@ async def find_traveller_see(message: Message):
                             f"<b>Город пользователя:</b> {user.city}\n"
                             f"<b>Локации пользователя:</b> {','.join(user.locations)}\n"
                             f"<b>О пользователе:</b> {user.bio}", reply_markup=keyboard)
-
-#
-# @dp.message_handler()
-# async def text_type(message):
-#     print("here")
-#     await message.answer("g")

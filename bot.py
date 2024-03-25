@@ -1,10 +1,11 @@
+import os
 from aiogram import Bot, Dispatcher, executor
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.contrib.fsm_storage.redis import RedisStorage2
 
 bot_token = "6614384039:AAHkX2KbEebFXGaHNqkDp51jbGEzAENiUBQ"
 
 bot = Bot(bot_token, parse_mode="HTML")
-dp = Dispatcher(bot, storage=MemoryStorage())
+dp = Dispatcher(bot, storage=RedisStorage2(host=os.getenv("REDIS_HOST", "localhost"), port=6379, db=0))
 
 from filters import *
 from handlers import *

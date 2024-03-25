@@ -98,7 +98,6 @@ async def registration_locations(message: Message, state: FSMContext):
     await state.update_data(locations=message.text)
     await message.answer("Укажите описание вашего профиля")
     await RegistrationState.next()
-    print("df")
 
 
 @dp.message_handler(state=RegistrationState.bio)
