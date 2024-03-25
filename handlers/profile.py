@@ -7,10 +7,11 @@ from filters import IsLogin, IsFriendRequest
 from states import EditProfileState, Profile
 from base_req import get_user_data, update_user_value, delete_user, get_friends, is_friend, get_user_name, \
     is_sent_request, new_friend_request, get_friend_request, make_friends, remove_user_from_friends,\
-    delete_friend_request, add_friend_with_link
+    delete_friend_request, add_friend_with_link, get_travelers, change_traveler_status, get_users_by_ids
 from keyboards import my_profile_keyboard, profile_edit_keyboard, cancel_keyboard, gender_edit_keyboard, \
-    delete_profile_keyboard, my_friends_keyboard, main_menu_keyboard, see_friends_back, see_friends_next
-
+    delete_profile_keyboard, my_friends_keyboard, main_menu_keyboard, see_friends_back, see_friends_next, \
+    search_traveller_keyboard, search_traveller_back, search_traveller_next
+from utils import users_to_recommend
 user_data = {}
 
 
@@ -334,6 +335,65 @@ async def claim_shared_journey(message: Message):
     else:
         await message.answer("<b>Пользователь уже и так ваш друг</b>")
 
+
+@dp.message_handler(IsLogin(), lambda message: message.text == "Поиск попутчиков")
+async def find_travelers(message: Message):
+    user = get_user_data(message.chat.id)
+    await message.answer("<b>Вы можете найти попутчиков, у которых схожие интересы и похожие локации для поиска. \n"
+                         "Вы можете отправить запрос человеку, который вас заинтересовал, а он может вам ответить.\n"
+                         f"Ваш текущий статус:</b> {'Ищу попутчика' if user.is_search_traveller else 'Никого не ищу'}", reply_markup=search_traveller_keyboard)
+
+
+@dp.callback_query_handler(lambda call: call.data and call.data.startswith("find_traveler"))
+async def find_traveler_call(call: CallbackQuery):
+    if call.data == "find_traveler_change_status":
+        change_traveler_status(call.message.chat.id)
+        await call.answer("Вы изменили свой статус")
+        user = get_user_data(call.message.chat.id)
+        await call.message.edit_text("<b>Вы можете найти попутчиков, у которых схожие интересы и похожие локации для поиска. \n"
+                             "Вы можете отправить запрос человеку, который вас заинтересовал, а он может вам ответить.\n"
+                             f"Ваш текущий статус:</b> {'Ищу попутчика' if user.is_search_traveller else 'Никого не ищу'}", reply_markup=search_traveller_keyboard)
+
+    elif call.data == "find_traveler_search":
+        user, users = get_travelers(call.message.chat.id)
+        if not user.is_search_traveller:
+            await call.answer("В данный момент вы никого не ищите. Измените статус")
+            return
+        if len(users) == 0:
+            await call.answer("Пока что никто не ищет себе попутчика")
+            return
+
+        recommend_users = get_users_by_ids(users_to_recommend(user.id, users))
+        if len(recommend_users) == 0:
+            await call.answer("Людей со схожими интересами не найдено")
+            return
+        user_data.update({call.message.chat.id: {"recommend_users": recommend_users, "recommend_step": 0}})
+        await find_traveller_see(call.message)
+
+    elif call.data == "find_traveler_back":
+        if user_data[call.message.chat.id]["recommend_step"] > 0:
+            user_data[call.message.chat.id]["recommend_step"] -= 1
+            await find_traveller_see(call.message)
+    elif call.data == "find_traveler_next":
+        if user_data[call.message.chat.id]['recommend_step'] + 1 < len(user_data[call.message.chat.id]["recommend_users"]):
+            user_data[call.message.chat.id]['recommend_step'] += 1
+            await find_traveller_see(call.message)
+
+
+async def find_traveller_see(message: Message):
+    user = user_data[message.chat.id]["recommend_users"][user_data[message.chat.id]["recommend_step"]]
+    gender = "Мужчина" if user.gender == "M" else "Женщина"
+    keyboard = InlineKeyboardMarkup()
+    button = InlineKeyboardButton(f"{user_data[message.chat.id]['recommend_step']+1}/{len(user_data[message.chat.id]['recommend_users'])}", callback_data="-")
+    keyboard.add(search_traveller_back, button, search_traveller_next)
+    await message.edit_text("<b>Найден попутчик</b>\n\n"
+                            f"<b>Имя:</b> {user.name}\n"
+                            f"<b>Пол пользователя:</b> {gender}\n"
+                            f"<b>Возраст пользователя:</b> {user.age}\n"
+                            f"<b>Страна пользователя:</b> {user.country}\n"
+                            f"<b>Город пользователя:</b> {user.city}\n"
+                            f"<b>Локации пользователя:</b> {','.join(user.locations)}\n"
+                            f"<b>О пользователе:</b> {user.bio}", reply_markup=keyboard)
 
 #
 # @dp.message_handler()

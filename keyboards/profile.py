@@ -15,13 +15,13 @@ edit_locations = InlineKeyboardButton("Локации", callback_data="my_profil
 edit_bio = InlineKeyboardButton("Информацию о себе", callback_data="my_profile_edit_bio")
 profile_edit_keyboard.add(edit_name, edit_age, edit_gender, edit_country, edit_city, edit_locations, edit_bio)
 
-cancel_keyboard = ReplyKeyboardMarkup()
+cancel_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 cancel_keyboard.add("Отмена")
 
-gender_edit_keyboard = ReplyKeyboardMarkup()
+gender_edit_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 gender_edit_keyboard.add("Мужчина", "Женщина")
 
-delete_profile_keyboard = ReplyKeyboardMarkup()
+delete_profile_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 delete_profile_keyboard.add("Да", "Нет")
 
 
@@ -34,3 +34,11 @@ my_friends_keyboard.add(add_friend, delete_friend)
 
 see_friends_back = InlineKeyboardButton("⬅️", callback_data="my_friends_see_back")
 see_friends_next = InlineKeyboardButton("➡️️", callback_data="my_friends_see_next")
+
+
+search_traveller_keyboard = InlineKeyboardMarkup()
+search_traveller_keyboard.add(InlineKeyboardButton("Изменить статус", callback_data="find_traveler_change_status"))
+search_traveller_keyboard.add(InlineKeyboardButton("Искать попутчика", callback_data="find_traveler_search"))
+
+search_traveller_back = InlineKeyboardButton("⬅️", callback_data="find_traveler_back")
+search_traveller_next = InlineKeyboardButton("➡️️", callback_data="find_traveler_next")

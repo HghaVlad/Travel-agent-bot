@@ -16,6 +16,7 @@ def get_user_name(telegram_id):
 def get_user_telegram_id(user_id):
     return session.query(User.telegram_id).filter(User.id == user_id).first()
 
+
 def get_user_data(telegram_id):
     user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
     return user
@@ -291,3 +292,20 @@ def get_non_settled_expenses(telegram_id):
     user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
     expenses = session.query(Transaction).filter(Transaction.payer_id == user.id, Transaction.is_settled == False).all()
     return expenses
+
+
+def change_traveler_status(telegram_id):
+    user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
+    user.is_search_traveller = not(user.is_search_traveller)
+    session.commit()
+
+
+def get_travelers(telegram_id):
+    user = session.query(User).filter(User.telegram_id == str(telegram_id)).first()
+    users = session.query(User).filter(and_(User.age - 5 <= user.age, User.age + 5 >= user.age)).all()
+    return user, users
+
+
+def get_users_by_ids(users_id):
+    users = session.query(User).filter(User.id.in_(users_id)).all()
+    return users

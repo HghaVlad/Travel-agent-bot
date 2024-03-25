@@ -37,6 +37,7 @@ class User(Base):
     city = mapped_column("city", VARCHAR(50))
     locations = mapped_column("locations", ARRAY(VARCHAR(50)))
     bio = mapped_column("bio", VARCHAR(500))
+    is_search_traveller = mapped_column("is_search_traveller", BOOLEAN, default=True)
     date_joined = mapped_column("date_joined", TIMESTAMP, default=datetime.now)
 
     friends = relationship("User", secondary=friendship,

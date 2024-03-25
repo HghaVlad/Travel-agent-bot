@@ -7,7 +7,7 @@ journey_menu_keyboard.add(see_journeys, new_journey)
 
 see_journey_keyboard = InlineKeyboardMarkup()
 
-confirm_keyboard = ReplyKeyboardMarkup()
+confirm_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 confirm_keyboard.add("Да", "Нет")
 
 see_journey_back = InlineKeyboardButton("⬅️", callback_data="journey_see_back")
@@ -28,7 +28,7 @@ remove_journey = InlineKeyboardButton("Удалить", callback_data="journey_d
 notes_journey = InlineKeyboardButton("Заметки", callback_data="journey_notes")
 notes_journey_create = InlineKeyboardButton("Создать заметку", callback_data="journey_notes_crate")
 
-journey_delete_keyboard = ReplyKeyboardMarkup()
+journey_delete_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 journey_delete_keyboard.add("Да", "Нет")
 
 journey_edit_keyboard = InlineKeyboardMarkup()
@@ -71,7 +71,7 @@ journey_route_zoom_lower = InlineKeyboardButton("Уменьшить масшта
 journey_route_zoom_higher = InlineKeyboardButton("Увеличить масштаб", callback_data="journey_route_zoom_higher")
 journey_route_change_zoom.add(journey_route_zoom_lower, journey_route_zoom_higher, journey_comeback_button)
 
-journey_route_my_location = ReplyKeyboardMarkup()
+journey_route_my_location = ReplyKeyboardMarkup(resize_keyboard=True)
 journey_route_my_location.add(KeyboardButton("Отправить местолположение", request_location=True))
 journey_route_my_location.add("Отмена")
 
